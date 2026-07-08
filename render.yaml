@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: pulse-media-dashboard
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: NEWSDATA_API_KEY
+        sync: false
+      - key: IMGBB_API_KEY
+        sync: false
+      - key: DASHBOARD_USER
+        sync: false
+      - key: DASHBOARD_PASS
+        sync: false
+      - key: INSTAGRAM_FINPULSE_USERNAME
+        sync: false
+      - key: INSTAGRAM_FINPULSE_PASSWORD
+        sync: false
+      - key: INSTAGRAM_TECHPULSE_USERNAME
+        sync: false
+      - key: INSTAGRAM_TECHPULSE_PASSWORD
+        sync: false
+      - key: INSTAGRAM_CORPPULSE_USERNAME
+        sync: false
+      - key: INSTAGRAM_CORPPULSE_PASSWORD
+        sync: false
+      - key: INSTAGRAM_WORLDPULSE_USERNAME
+        sync: false
+      - key: INSTAGRAM_WORLDPULSE_PASSWORD
+        sync: false

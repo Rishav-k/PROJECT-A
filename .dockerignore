@@ -1,0 +1,8 @@
+pulse_media/.env
+pulse_media/data/
+pulse_media/logs/
+pulse_media/output/
+**/__pycache__/
+**/*.pyc
+.git/
+.DS_Store

@@ -225,7 +225,7 @@ _bg_thread = threading.Thread(target=_bg_worker_loop, daemon=True, name="bg-proc
 _bg_thread.start()
 print("  🔄 Background processor started")
 
-PORT     = 8888
+PORT     = int(os.environ.get("PORT", 8888))
 IMAGES_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "output", "images"))
 LOG_PATH   = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "logs", "scheduler.log"))
 
