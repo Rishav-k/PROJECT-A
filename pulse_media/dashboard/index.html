@@ -1,0 +1,3237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pulse Media — Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080c;--s1:#0f1117;--s2:#161820;--border:#1e2030;
+  --text:#dde1f0;--muted:#5a6075;--accent:#6366f1;
+  --green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --fin:#14b8a6;--tech:#a855f7;--corp:#f97316;--world:#ec4899;
+  --sidebar:220px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50}
+.sidebar-logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.logo-text{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.logo-text span{color:var(--accent)}
+.logo-sub{color:var(--muted);font-size:10px;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.nav{padding:10px 8px;flex:1}
+.nav-section{color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:14px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--s2);color:var(--text)}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-item .icon{font-size:15px;width:20px;text-align:center}
+.sidebar-bottom{padding:12px 8px;border-top:1px solid var(--border)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40}
+.topbar-title{font-size:15px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.chip{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600}
+.chip-green{background:#14451f;color:var(--green)}
+.chip-yellow{background:#422006;color:var(--yellow)}
+.content{padding:22px 24px;flex:1}
+
+/* ── PAGES ── */
+.page{display:none}.page.active{display:block}
+
+/* ── GRID UTILITIES ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.gap{gap:20px}
+
+/* ── CARD ── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--s2);border-bottom:1px solid var(--border)}
+.card-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.card-body{padding:16px}
+
+/* ── STAT CARD ── */
+.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.stat-label{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.stat-val{font-size:26px;font-weight:800;line-height:1}
+.stat-sub{color:var(--muted);font-size:11px;margin-top:4px}
+
+/* ── ACCOUNT CARD ── */
+.acct-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative}
+.acct-top{height:4px}
+.acct-top.fin{background:var(--fin)}.acct-top.tech{background:var(--tech)}.acct-top.corp{background:var(--corp)}.acct-top.world{background:var(--world)}
+.acct-body{padding:14px 16px}
+.acct-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.acct-handle{color:var(--muted);font-size:11px;margin-bottom:12px}
+.acct-nums{display:flex;gap:18px;margin-bottom:12px}
+.acct-num .n{font-size:22px;font-weight:700;line-height:1}
+.acct-num .l{color:var(--muted);font-size:10px}
+.acct-status{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:10px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-g{background:var(--green)}.dot-y{background:var(--yellow)}.dot-r{background:var(--red)}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.acct-btns{display:flex;gap:6px}
+.btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:opacity .15s}
+.btn:hover{opacity:.8}
+.btn-p{background:var(--accent);color:#fff}
+.btn-d{background:var(--s2);color:var(--muted);border:1px solid var(--border)}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* ── PIPELINE FLOW ── */
+.pipeline-flow{display:flex;align-items:center;gap:0;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:20px;overflow-x:auto}
+.pf-stage{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:110px}
+.pf-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:2px}
+.pf-label{font-size:11px;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.5px}
+.pf-count{font-size:24px;font-weight:800;line-height:1}
+.pf-sub{font-size:10px;color:var(--muted);text-align:center}
+.pf-arrow{color:var(--border);font-size:20px;margin:0 4px;flex-shrink:0;padding-bottom:12px}
+.pf-ok{background:#14451f;color:var(--green)}.pf-warn{background:#422006;color:var(--yellow)}.pf-info{background:#1e2040;color:var(--accent)}.pf-purple{background:#2a1040;color:#a855f7}
+
+/* ── POST CARDS (pipeline) ── */
+.post-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.post-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s}
+.post-card:hover{border-color:var(--accent)}
+.post-img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--s2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:24px}
+.post-img img{width:100%;height:100%;object-fit:cover;display:block}
+.post-info{padding:10px 12px}
+.post-title{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.post-meta{display:flex;align-items:center;justify-content:space-between}
+.post-source{color:var(--muted);font-size:10px}
+.post-stage{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+.stage-posted{background:#14451f;color:var(--green)}
+.stage-ready{background:#1e2040;color:var(--accent)}
+.stage-pending{background:#2a2010;color:var(--yellow)}
+.stage-fetched{background:var(--s2);color:var(--muted)}
+.post-page-tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase}
+.tag-fin{background:#0d3330;color:var(--fin)}.tag-tech{background:#1e1035;color:var(--tech)}.tag-corp{background:#2d1608;color:var(--corp)}.tag-world{background:#2d0f20;color:var(--world)}
+
+/* ── INSTAGRAM MANAGE ── */
+.ig-tabs{display:flex;gap:4px;margin-bottom:16px}
+.ig-tab{padding:7px 16px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--border);background:var(--s1);transition:all .15s}
+.ig-tab:hover{color:var(--text);border-color:var(--muted)}
+.ig-tab.active{border-color:transparent;color:#fff}
+.ig-tab.active.fin{background:var(--fin)}.ig-tab.active.tech{background:var(--tech)}.ig-tab.active.corp{background:var(--corp)}.ig-tab.active.world{background:var(--world)}
+.ig-split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ig-col-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.ig-count{background:var(--s2);padding:2px 8px;border-radius:10px;font-size:11px;color:var(--text)}
+
+.ig-card{background:var(--s1);border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:10px;display:flex;gap:0}
+.ig-card-img{width:80px;height:80px;object-fit:cover;flex-shrink:0}
+.ig-card-img-ph{width:80px;height:80px;background:var(--s2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted)}
+.ig-card-body{padding:10px 12px;flex:1;min-width:0}
+.ig-card-title{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ig-card-caption{font-size:11px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:5px}
+.ig-card-foot{display:flex;align-items:center;justify-content:space-between}
+.ig-time{font-size:10px;color:var(--muted)}
+.ig-id{font-size:10px;color:var(--accent)}
+.ig-post-btn{padding:4px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:600}
+.ig-post-btn:hover{opacity:.8}
+
+/* ── SOURCES TABLE ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--s2)}
+.tbl td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--border)}
+.tbl tr:hover td{background:var(--s2)}
+.tbl tr:last-child td{border-bottom:none}
+
+/* ── LOG ── */
+.log-wrap{background:#050608;border-radius:8px;padding:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:11px;max-height:500px;overflow-y:auto}
+.log-line{padding:2px 14px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.ll-info{color:#8b9cc8}.ll-ok{color:var(--green)}.ll-warn{color:var(--yellow)}.ll-err{color:var(--red)}
+
+/* ── MISC ── */
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:12px}
+.mb{margin-bottom:16px}
+.flex{display:flex}.ai-c{align-items:center}.jb{justify-content:space-between}.gap8{gap:8px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateY(0)}
+.section-title{font-size:14px;font-weight:700;margin-bottom:14px}
+
+/* ── FETCHER VISUALIZER ── */
+#fviz-wrap{display:flex;position:relative;gap:0;align-items:flex-start}
+.fv-left-panel{width:230px;flex-shrink:0;position:relative;z-index:10}
+.fv-right-panel{flex:1;position:relative;z-index:10;padding-left:60px}
+#fviz-svg{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:5;overflow:visible}
+
+.fv-pg-group{margin-bottom:18px}
+.fv-pg-label{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-left:2px;display:flex;align-items:center;gap:6px}
+.fv-pg-label::after{content:'';flex:1;height:1px;background:currentColor;opacity:.2}
+
+.fv-src-card{border-left:3px solid transparent;border-radius:0 7px 7px 0;padding:8px 10px;margin-bottom:5px;cursor:pointer;transition:all .15s;background:var(--s1);border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.fv-src-card:hover{background:var(--s2);transform:translateX(2px)}
+.fv-src-card.fv-active{background:var(--s2);box-shadow:inset 0 0 0 1px var(--accent)22}
+.fv-src-row{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.fv-src-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.fv-src-foot{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.fv-src-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px}
+.fv-src-type{background:var(--s2);color:var(--muted);font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.fv-src-count{font-size:10px;color:var(--muted);margin-left:auto}
+.fv-src-status-ok{background:#0d3320;color:var(--green)}
+.fv-src-status-err{background:#3d0f0f;color:var(--red)}
+.fv-src-status-to{background:#3d2800;color:var(--yellow)}
+.fv-src-status-nv{background:var(--s2);color:var(--muted)}
+
+.fv-art-card{display:flex;align-items:stretch;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;transition:border-color .15s;background:var(--s1)}
+.fv-art-card:hover{border-color:var(--accent)44}
+.fv-art-card.fv-highlight{border-color:currentColor;box-shadow:0 0 0 1px currentColor}
+.fv-art-score-col{width:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;padding:8px 0;gap:1px}
+.fv-art-score{font-size:16px;font-weight:800;line-height:1}
+.fv-art-score-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.fv-art-body{padding:8px 12px;flex:1;min-width:0;border-left:1px solid var(--border)}
+.fv-art-title{font-size:12px;font-weight:600;line-height:1.45;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.fv-art-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fv-art-src{font-size:10px;font-weight:700}
+.fv-art-time{font-size:10px;color:var(--muted)}
+
+.fv-filter-bar{display:flex;align-items:center;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.fv-filter-btn{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.fv-filter-btn:hover{color:var(--text)}
+.fv-filter-btn.fv-f-active{border-color:transparent;color:#000}
+.fv-hint{font-size:11px;color:var(--muted);margin-left:auto;font-style:italic}
+.fv-stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.fv-stat{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 14px;display:flex;flex-direction:column;gap:2px}
+.fv-stat-val{font-size:20px;font-weight:800}
+.fv-stat-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── FETCHER CONTROL BAR ── */
+.fv-ctrl-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px 14px;flex-wrap:wrap}
+.fv-ctrl-sep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+.fv-last-updated{font-size:11px;color:var(--muted)}
+.fv-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:none;flex-shrink:0}
+.fv-spinner.fv-spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fv-fetch-wrap{position:relative}
+.fv-fetch-menu{position:absolute;top:calc(100% + 4px);left:0;min-width:158px;background:var(--s1);border:1px solid var(--border);border-radius:8px;z-index:200;padding:4px;box-shadow:0 6px 24px #00000066;display:none}
+.fv-fetch-menu.open{display:block}
+.fv-fetch-opt{padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:8px}
+.fv-fetch-opt:hover{background:var(--s2);color:var(--text)}
+/* ── ARTICLE CONTROLS ── */
+.fv-art-ctrls{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-left:60px;flex-wrap:wrap}
+.fv-sort-btn{padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.fv-sort-btn:hover{color:var(--text)}
+.fv-sort-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.fv-score-pill{padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.fv-score-pill:hover{color:var(--text)}
+.fv-score-pill.active{background:var(--yellow);border-color:var(--yellow);color:#000}
+.fv-search{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text);font-size:11px;outline:none;min-width:130px;max-width:200px}
+.fv-search::placeholder{color:var(--muted)}
+.fv-search:focus{border-color:var(--accent)}
+.fv-toggle-lbl{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted);user-select:none;white-space:nowrap}
+.fv-toggle-track{width:28px;height:16px;background:var(--s2);border-radius:8px;border:1px solid var(--border);position:relative;transition:background .15s;flex-shrink:0}
+.fv-toggle-track.on{background:var(--accent);border-color:var(--accent)}
+.fv-toggle-thumb{position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .15s}
+.fv-toggle-track.on .fv-toggle-thumb{left:14px}
+
+/* ── AUTO-POLL BADGE ── */
+.fv-autopoll{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-left:auto}
+.fv-autopoll-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.fv-autopoll-dot.active{background:var(--green);animation:pulse 2s infinite}
+
+/* ── DATA SOURCES PAGE ── */
+.ds-page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ds-stats-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.ds-stat{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 16px;display:flex;flex-direction:column;gap:2px;min-width:110px}
+.ds-stat-val{font-size:22px;font-weight:800}
+.ds-stat-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.ds-filter-bar{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.ds-filter-btn{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:var(--s1);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.ds-filter-btn:hover{color:var(--text)}
+.ds-filter-btn.active{border-color:transparent;color:#000}
+
+/* Source grid */
+.ds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:20px}
+.ds-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:13px 14px 0;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.ds-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 16px #00000040}
+.ds-card.ds-selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)44}
+.ds-card-top{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.ds-card-name{font-size:12px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.ds-card-stats{display:flex;gap:14px;margin-bottom:10px}
+.ds-card-stat{font-size:11px;color:var(--muted)}
+.ds-card-stat b{color:var(--text);font-weight:700}
+.ds-card-foot{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);margin-top:2px;font-size:10px;color:var(--muted)}
+.ds-card-bar{height:2px;position:absolute;bottom:0;left:0;right:0}
+.ds-type-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--s2);color:var(--muted);text-transform:uppercase;flex-shrink:0}
+.ds-refetch-btn{display:block;width:100%;margin:8px 0 4px;padding:5px 0;font-size:10px;font-weight:700;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--muted);cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.ds-refetch-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ds-refetch-btn.spinning{color:var(--yellow);border-color:var(--yellow);pointer-events:none}
+.ds-refetch-btn.done{color:var(--green);border-color:var(--green)}
+
+/* Drill-down panel */
+.ds-drill{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:4px}
+.ds-drill-header{display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--s2);border-bottom:1px solid var(--border)}
+.ds-drill-back{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.ds-drill-back:hover{color:var(--text);border-color:var(--muted)}
+.ds-drill-title{font-size:14px;font-weight:700;flex:1}
+.ds-drill-pipeline{display:flex;gap:8px;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--s1);flex-wrap:wrap}
+.ds-pipe-chip{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 14px;border-radius:7px;background:var(--s2);border:1px solid var(--border);min-width:70px}
+.ds-pipe-chip-n{font-size:18px;font-weight:800}
+.ds-pipe-chip-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.ds-drill-tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--s2);flex-wrap:wrap}
+.ds-tab{padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.ds-tab:hover{color:var(--text)}
+.ds-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.ds-article-list{max-height:520px;overflow-y:auto}
+
+/* Article row */
+.ds-art-row{display:flex;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);transition:background .1s;align-items:flex-start}
+.ds-art-row:hover{background:var(--s2)}
+.ds-art-thumb{width:70px;height:70px;border-radius:7px;flex-shrink:0;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);overflow:hidden;border:1px solid var(--border)}
+.ds-art-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ds-art-body{flex:1;min-width:0}
+.ds-art-title{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px}
+.ds-art-title a{color:var(--text);text-decoration:none}
+.ds-art-title a:hover{color:var(--accent)}
+.ds-art-summary{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ds-art-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ds-art-score-bar{height:3px;background:var(--border);border-radius:2px;margin-bottom:4px;overflow:hidden}
+.ds-art-score-fill{height:100%;border-radius:2px}
+.ds-art-right{width:88px;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px;padding-top:2px}
+.ds-likes{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.ds-status-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.ds-status-badge.dsa-toggle{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
+.ds-status-badge.dsa-toggle:hover{opacity:.8}
+.dss-fetched{background:var(--s2);color:var(--muted)}
+.dss-creating{background:#1a1040;color:#a855f7}
+.dss-captioned{background:#0d2040;color:var(--accent)}
+.dss-image{background:#2a1608;color:var(--corp)}
+.dss-posted{background:#14451f;color:var(--green)}
+/* ── Article action panel ── */
+.ds-art-wrap{border-bottom:1px solid var(--border)}
+.ds-art-wrap .ds-art-row{border-bottom:none}
+.ds-action-panel{background:var(--s2);padding:14px 16px 16px;border-top:2px solid var(--border)}
+/* Pipeline timeline */
+.dsa-pipeline{display:flex;flex-direction:column;gap:0}
+.dsa-stage{display:flex;gap:12px;padding:10px 0;position:relative}
+.dsa-stage:not(:last-child)::after{content:'';position:absolute;left:14px;top:36px;width:2px;bottom:-2px;background:var(--border)}
+.dsa-stage-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;border:2px solid var(--border);background:var(--s1);z-index:1;position:relative}
+.dsa-stage.done .dsa-stage-icon{border-color:var(--green);background:rgba(72,187,120,.12);color:var(--green)}
+.dsa-stage.active .dsa-stage-icon{border-color:var(--accent);background:rgba(99,179,237,.12);color:var(--accent)}
+.dsa-stage.inactive .dsa-stage-icon{opacity:.4}
+.dsa-stage-body{flex:1;min-width:0;padding-top:3px}
+.dsa-stage-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.dsa-stage.done .dsa-stage-title{color:var(--green)}
+.dsa-stage.active .dsa-stage-title{color:var(--accent)}
+/* Content within stages */
+.dsa-mini-preview{font-size:11px;color:var(--text);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;background:var(--s1);border-radius:4px;padding:6px 8px;margin-bottom:4px}
+.dsa-btn{font-size:11px;font-weight:700;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--s1);color:var(--text);cursor:pointer;transition:all .15s;display:inline-block;font-family:inherit}
+.dsa-btn:hover{border-color:var(--accent);color:var(--accent)}
+.dsa-btn:disabled,.dsa-btn.loading{opacity:.6;cursor:not-allowed}
+.dsa-btn.success{border-color:var(--green)!important;color:var(--green)!important}
+.dsa-btn.error{border-color:var(--red)!important;color:var(--red)!important}
+.dsa-btn-post{border-color:rgba(72,187,120,.4);color:var(--green)}
+.dsa-btn-post:hover{background:var(--green)!important;color:#000!important}
+.dsa-btn-warn{border-color:rgba(246,173,85,.4);color:var(--yellow)}
+.dsa-btn-warn:hover{background:var(--yellow)!important;color:#000!important}
+.dsa-btn-mark{border-color:rgba(99,179,237,.3);color:var(--accent)}
+.dsa-btn-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+.dsa-result{font-size:11px;line-height:1.5;min-height:0;transition:all .2s;margin-top:4px}
+.dsa-result.ok{color:var(--green)}
+.dsa-result.err{color:var(--red);background:rgba(245,101,101,.08);border-radius:4px;padding:6px 8px}
+/* Carousel strip */
+.dsa-carousel-strip{display:flex;gap:7px;overflow-x:auto;padding:6px 0;scrollbar-width:thin;margin-top:6px}
+.dsa-slide-thumb{flex-shrink:0;width:90px;height:90px;border-radius:6px;overflow:hidden;border:2px solid var(--border);cursor:pointer;position:relative;transition:border-color .15s}
+.dsa-slide-thumb:hover{border-color:var(--accent)}
+.dsa-slide-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.dsa-slide-n{position:absolute;bottom:2px;right:4px;font-size:9px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000}
+.dsa-slide-label{font-size:9px;color:var(--muted);text-align:center;margin-top:3px}
+.dsa-confirm-row{display:flex;gap:8px;align-items:center}
+.dsa-confirm-msg{font-size:11px;color:var(--yellow)}
+.ds-art-score-num{font-size:14px;font-weight:800}
+.ds-art-content-btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:2px}
+.ds-art-content-btn:hover{color:var(--text);border-color:var(--muted)}
+
+/* ── Post Ready button + overlay ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn-ready{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:8px;border:1.5px solid var(--green);background:rgba(72,187,120,.1);color:var(--green);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;letter-spacing:.3px}
+.btn-ready:hover{background:var(--green);color:#000}
+.ready-badge{background:var(--green);color:#000;border-radius:20px;font-size:10px;font-weight:900;padding:1px 7px;min-width:18px;text-align:center}
+/* Ready panel tabs */
+.ready-tab{padding:10px 16px;border:none;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;white-space:nowrap;transition:all .15s}
+.ready-tab:hover{color:var(--text)}
+.ready-tab.active{color:var(--green);border-bottom-color:var(--green)}
+/* Ready post card */
+.rp-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s}
+.rp-card:hover{border-color:rgba(72,187,120,.4)}
+.rp-header{display:flex;align-items:flex-start;gap:10px;padding:12px 14px 10px}
+.rp-page-badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;margin-top:2px}
+.rp-title{font-size:13px;font-weight:700;line-height:1.4;flex:1}
+.rp-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.rp-slides{display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto;scrollbar-width:none}
+.rp-slides::-webkit-scrollbar{display:none}
+.rp-thumb{flex-shrink:0;width:100px;height:100px;border-radius:7px;overflow:hidden;border:2px solid var(--border);cursor:pointer;position:relative;transition:border-color .15s}
+.rp-thumb:hover{border-color:var(--green)}
+.rp-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.rp-thumb-n{position:absolute;bottom:3px;right:5px;font-size:9px;font-weight:900;color:#fff;text-shadow:0 1px 3px #000}
+.rp-thumb-lbl{font-size:8px;color:var(--muted);text-align:center;margin-top:2px}
+.rp-footer{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border);background:var(--s1)}
+.rp-caption-preview{font-size:10px;color:var(--muted);flex:1;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.btn-post-now{padding:7px 16px;border-radius:7px;border:1.5px solid var(--green);background:rgba(72,187,120,.1);color:var(--green);font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap}
+.btn-post-now:hover{background:var(--green);color:#000}
+.btn-post-now:disabled{opacity:.5;cursor:not-allowed}
+.btn-post-all{padding:9px 20px;border-radius:8px;border:1.5px solid var(--green);background:rgba(72,187,120,.12);color:var(--green);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-post-all:hover{background:var(--green);color:#000}
+.rp-empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.rp-empty .rp-empty-icon{font-size:48px;margin-bottom:12px}
+.rp-section-hdr{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:4px 2px 8px}
+
+/* Gallery view */
+.ds-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:14px 16px}
+.ds-gal-card{background:var(--s2);border:1px solid var(--border);border-radius:9px;overflow:hidden;cursor:pointer;transition:all .15s;position:relative}
+.ds-gal-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.ds-gal-img{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)}
+.ds-gal-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ds-gal-info{padding:8px 9px}
+.ds-gal-title{font-size:11px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:5px}
+.ds-gal-foot{display:flex;align-items:center;justify-content:space-between}
+.ds-gal-score{font-size:12px;font-weight:800}
+.ds-no-image-badge{position:absolute;top:6px;right:6px;background:#00000088;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+
+/* Image lightbox */
+#ds-lightbox{position:fixed;inset:0;background:#000000cc;z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;cursor:zoom-out}
+#ds-lightbox.open{display:flex}
+#ds-lightbox img{max-width:90vw;max-height:80vh;object-fit:contain;border-radius:8px}
+#ds-lightbox-caption{color:#fff;font-size:12px;max-width:600px;text-align:center;opacity:.8}
+
+/* ── ARTICLE DETAIL MODAL ── */
+#am-backdrop{position:fixed;inset:0;background:#00000099;z-index:2000;display:none;overflow-y:auto;padding:24px 16px}
+#am-backdrop.open{display:block}
+#am-wrap{max-width:760px;margin:0 auto;background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative}
+#am-topbar{height:3px}
+.am-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px}
+.am-title{font-size:15px;font-weight:700;flex:1;line-height:1.45;color:var(--text)}
+.am-close{background:var(--s2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 11px;cursor:pointer;font-size:13px;flex-shrink:0;line-height:1;transition:all .15s}
+.am-close:hover{color:var(--text);border-color:var(--muted)}
+.am-body{padding:0;max-height:calc(90vh - 80px);overflow-y:auto}
+.am-section{padding:16px 20px;border-bottom:1px solid var(--border)}
+.am-section:last-child{border-bottom:none}
+.am-section-title{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.am-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.am-meta-grid{display:flex;gap:10px;flex-wrap:wrap}
+.am-meta-chip{font-size:11px;padding:3px 9px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:var(--muted)}
+.am-meta-chip b{color:var(--text);font-weight:700}
+.am-score-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px}
+.am-score-fill{height:100%;border-radius:2px;transition:width .3s}
+/* Pipeline track */
+.am-pipeline{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:4px 0 2px}
+.am-stage{display:flex;flex-direction:column;align-items:center;flex:1;min-width:80px;position:relative}
+.am-stage-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--border);background:var(--s2);z-index:2;position:relative;transition:all .2s}
+.am-stage-dot.done{border-color:currentColor;background:transparent}
+.am-stage-connector{position:absolute;top:15px;left:50%;right:-50%;height:2px;background:var(--border);z-index:1}
+.am-stage-connector.done{background:currentColor;opacity:.4}
+.am-stage:last-child .am-stage-connector{display:none}
+.am-stage-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:6px;text-align:center;color:var(--muted)}
+.am-stage-detail{font-size:10px;color:var(--muted);margin-top:2px;text-align:center;max-width:80px;line-height:1.3}
+.am-stage-action{margin-top:7px;display:flex;flex-direction:column;gap:4px;align-items:center}
+.am-stage-btn{font-size:9px;font-weight:700;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--s2);color:var(--text);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;letter-spacing:.2px;min-width:64px}
+.am-stage-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.am-stage-btn:disabled{opacity:.5;cursor:not-allowed}
+.am-stage-btn.am-btn-post{border-color:rgba(72,187,120,.4);color:var(--green)}
+.am-stage-btn.am-btn-post:hover:not(:disabled){background:var(--green)!important;color:#000!important;border-color:var(--green)}
+.am-stage-btn.am-btn-mark{border-color:rgba(99,179,237,.3);color:var(--accent)}
+.am-stage-btn.am-btn-err{border-color:var(--red)!important;color:var(--red)!important}
+.am-stage-err{font-size:9px;color:var(--red);margin-top:3px;max-width:84px;text-align:center;line-height:1.3}
+/* Caption box */
+.am-caption-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap;max-height:200px;overflow-y:auto}
+.am-empty-box{background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:12px}
+/* Instagram preview */
+.am-ig-mock{background:#fff;border-radius:10px;overflow:hidden;max-width:380px;border:1px solid #dbdbdb;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#000}
+.am-ig-header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #efefef}
+.am-ig-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:700;flex-shrink:0}
+.am-ig-handle{font-size:13px;font-weight:600;flex:1;color:#000}
+.am-ig-dots{color:#262626;font-size:20px;letter-spacing:2px;line-height:1}
+.am-ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:36px}
+.am-ig-actions{padding:10px 12px 4px;display:flex;gap:14px;font-size:22px}
+.am-ig-likes{padding:0 12px 4px;font-size:13px;font-weight:600;color:#000}
+.am-ig-caption{padding:0 12px 10px;font-size:13px;line-height:1.5;color:#000;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.am-ig-time{padding:0 12px 10px;font-size:11px;color:#8e8e8e}
+/* Analytics */
+.am-analytics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.am-analytics-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.am-analytics-val{font-size:24px;font-weight:800;line-height:1}
+.am-analytics-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+/* Article body */
+.am-article-body{font-size:12px;line-height:1.75;color:var(--muted);background:var(--s2);border-radius:8px;padding:12px 14px;max-height:220px;overflow-y:auto;border:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">PULSE <span>MEDIA</span></div>
+    <div class="logo-sub">Command Center</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Main</div>
+    <button class="nav-item active" onclick="go('home',this)"><span class="icon">🏠</span>Home</button>
+    <button class="nav-item" onclick="go('pipelines',this)"><span class="icon">⚡</span>Pipelines</button>
+    <button class="nav-item" onclick="go('instagram',this)"><span class="icon">📲</span>Instagram</button>
+    <div class="nav-section">System</div>
+    <button class="nav-item" onclick="go('datasources',this)"><span class="icon">📡</span>Data Sources</button>
+    <button class="nav-item" onclick="go('fetcher',this)"><span class="icon">🕸</span>Fetcher</button>
+    <button class="nav-item" onclick="go('sources',this)"><span class="icon">📋</span>Sources Table</button>
+    <button class="nav-item" onclick="go('logs',this)"><span class="icon">🖥</span>Logs & Errors</button>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="nav-item" style="cursor:default">
+      <span class="status-dot pulse"></span>
+      <span id="sb-status" style="font-size:11px;color:var(--muted)">Connecting…</span>
+    </div>
+    <!-- BG processing status in sidebar -->
+    <div id="sb-bg" style="display:none;margin-top:8px;padding:7px 10px;border-radius:7px;background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.2)">
+      <div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:4px">⟳ AUTO-PROCESSING</div>
+      <div id="sb-bg-txt" style="font-size:10px;color:var(--muted);line-height:1.5"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── POST READY OVERLAY PANEL ── -->
+<div id="ready-overlay" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeReadyPanel()">
+  <div id="ready-panel" style="position:absolute;right:0;top:0;bottom:0;width:min(780px,100vw);background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">
+    <!-- Panel header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--s2);flex-shrink:0">
+      <div>
+        <div style="font-size:16px;font-weight:800">📸 Ready to Post</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="ready-panel-sub">Carousel posts queued and ready for Instagram</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-d" onclick="loadReadyPosts()" style="font-size:11px">↻ Refresh</button>
+        <button onclick="closeReadyPanel()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:4px">✕</button>
+      </div>
+    </div>
+    <!-- Page filter tabs -->
+    <div id="ready-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
+      <button class="ready-tab active" data-page="all" onclick="filterReadyPage('all',this)">All</button>
+      <button class="ready-tab" data-page="finpulse" onclick="filterReadyPage('finpulse',this)">💹 FinPulse</button>
+      <button class="ready-tab" data-page="techpulse" onclick="filterReadyPage('techpulse',this)">💻 TechPulse</button>
+      <button class="ready-tab" data-page="corppulse" onclick="filterReadyPage('corppulse',this)">🏢 CorpPulse</button>
+      <button class="ready-tab" data-page="worldpulse" onclick="filterReadyPage('worldpulse',this)">🌍 WorldPulse</button>
+    </div>
+    <!-- Cards list -->
+    <div id="ready-list" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+      <div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 0">Loading…</div>
+    </div>
+    <!-- Footer: post all button -->
+    <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--s2);flex-shrink:0;display:flex;align-items:center;gap:10px">
+      <button class="btn-post-all" id="btn-post-all" onclick="postAllReady()">📸 Post All Ready Now</button>
+      <span style="font-size:11px;color:var(--muted)" id="post-all-status"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="topbar">
+    <div class="flex ai-c gap8">
+      <span class="topbar-title" id="page-title">Home</span>
+      <span class="chip chip-green" id="sys-chip">● LIVE</span>
+    </div>
+    <div class="topbar-right">
+      <!-- BG processing pill -->
+      <div id="bg-pill" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--accent);background:rgba(99,179,237,.1);border:1px solid rgba(99,179,237,.25);border-radius:20px;padding:4px 12px">
+        <span class="bg-spin" style="display:inline-block;animation:spin 1s linear infinite">⟳</span>
+        <span id="bg-pill-txt">Processing…</span>
+      </div>
+      <span style="color:var(--muted);font-size:11px" id="refresh-info">Refreshing in 30s</span>
+      <button class="btn btn-d" onclick="refreshAll()">↻ Refresh</button>
+      <!-- Post Ready CTA -->
+      <button class="btn-ready" id="btn-ready" onclick="openReadyPanel()">
+        📸 Post Ready <span class="ready-badge" id="ready-badge" style="display:none">0</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ════════════════════════════════════════
+         PAGE: HOME
+    ════════════════════════════════════════ -->
+    <div class="page active" id="page-home">
+
+      <!-- Stats Row -->
+      <div class="g5 mb">
+        <div class="stat-card">
+          <div class="stat-label">Articles Fetched</div>
+          <div class="stat-val" id="h-articles" style="color:var(--accent)">—</div>
+          <div class="stat-sub">total across all pages</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Posts Published</div>
+          <div class="stat-val" id="h-posted" style="color:var(--green)">—</div>
+          <div class="stat-sub">live on Instagram</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">In Queue</div>
+          <div class="stat-val" id="h-pending" style="color:var(--yellow)">—</div>
+          <div class="stat-sub">ready to post</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sources</div>
+          <div class="stat-val" id="h-sources">—</div>
+          <div class="stat-sub" id="h-sources-sub">RSS + API feeds</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Next Post</div>
+          <div class="stat-val" id="h-next" style="color:var(--yellow);font-size:20px">—</div>
+          <div class="stat-sub" id="h-next-ist">—</div>
+        </div>
+      </div>
+
+      <!-- Account Cards -->
+      <div class="section-title">Instagram Pages</div>
+      <div class="g4 mb">
+        <div class="acct-card">
+          <div class="acct-top fin"></div>
+          <div class="acct-body">
+            <div class="acct-name">FinPulse</div>
+            <div class="acct-handle">@finpulse.daily</div>
+            <div class="acct-nums">
+              <div class="acct-num"><div class="n" id="ac-fin-total" style="color:var(--fin)">—</div><div class="l">Articles</div></div>
+              <div class="acct-num"><div class="n" id="ac-fin-posted" style="color:var(--green)">—</div><div class="l">Posted</div></div>
+              <div class="acct-num"><div class="n" id="ac-fin-q" style="color:var(--yellow)">—</div><div class="l">Queue</div></div>
+            </div>
+            <div class="acct-status"><div class="dot dot-g pulse"></div><span style="color:var(--green)">Active · Posting Live</span></div>
+            <div class="acct-btns">
+              <button class="btn btn-p btn-sm" onclick="triggerPost('finpulse')">▶ Post Now</button>
+              <button class="btn btn-d btn-sm" onclick="triggerPost('finpulse',true)">Dry Run</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="acct-card">
+          <div class="acct-top tech"></div>
+          <div class="acct-body">
+            <div class="acct-name">TechPulse</div>
+            <div class="acct-handle">@techpulse — pending setup</div>
+            <div class="acct-nums">
+              <div class="acct-num"><div class="n" id="ac-tech-total" style="color:var(--tech)">—</div><div class="l">Articles</div></div>
+              <div class="acct-num"><div class="n" id="ac-tech-posted" style="color:var(--green)">—</div><div class="l">Posted</div></div>
+              <div class="acct-num"><div class="n" id="ac-tech-q" style="color:var(--yellow)">—</div><div class="l">Queue</div></div>
+            </div>
+            <div class="acct-status"><div class="dot dot-r"></div><span style="color:var(--red)">Account not created yet</span></div>
+            <div class="acct-btns">
+              <button class="btn btn-p btn-sm" onclick="triggerPost('techpulse')">▶ Post Now</button>
+              <button class="btn btn-d btn-sm" onclick="triggerPost('techpulse',true)">Dry Run</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="acct-card">
+          <div class="acct-top corp"></div>
+          <div class="acct-body">
+            <div class="acct-name">CorpPulse</div>
+            <div class="acct-handle">@corppulse — pending setup</div>
+            <div class="acct-nums">
+              <div class="acct-num"><div class="n" id="ac-corp-total" style="color:var(--corp)">—</div><div class="l">Articles</div></div>
+              <div class="acct-num"><div class="n" id="ac-corp-posted" style="color:var(--green)">—</div><div class="l">Posted</div></div>
+              <div class="acct-num"><div class="n" id="ac-corp-q" style="color:var(--yellow)">—</div><div class="l">Queue</div></div>
+            </div>
+            <div class="acct-status"><div class="dot dot-r"></div><span style="color:var(--red)">Account not created yet</span></div>
+            <div class="acct-btns">
+              <button class="btn btn-p btn-sm" onclick="triggerPost('corppulse')">▶ Post Now</button>
+              <button class="btn btn-d btn-sm" onclick="triggerPost('corppulse',true)">Dry Run</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="acct-card">
+          <div class="acct-top world"></div>
+          <div class="acct-body">
+            <div class="acct-name">WorldPulse</div>
+            <div class="acct-handle">@worldpulse — pending setup</div>
+            <div class="acct-nums">
+              <div class="acct-num"><div class="n" id="ac-world-total" style="color:var(--world)">—</div><div class="l">Articles</div></div>
+              <div class="acct-num"><div class="n" id="ac-world-posted" style="color:var(--green)">—</div><div class="l">Posted</div></div>
+              <div class="acct-num"><div class="n" id="ac-world-q" style="color:var(--yellow)">—</div><div class="l">Queue</div></div>
+            </div>
+            <div class="acct-status"><div class="dot dot-r"></div><span style="color:var(--red)">Account not created yet</span></div>
+            <div class="acct-btns">
+              <button class="btn btn-p btn-sm" onclick="triggerPost('worldpulse')">▶ Post Now</button>
+              <button class="btn btn-d btn-sm" onclick="triggerPost('worldpulse',true)">Dry Run</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Chart -->
+      <div class="g2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📈 Activity — Last 7 Days</span>
+          </div>
+          <div class="card-body">
+            <canvas id="activity-chart" height="180"></canvas>
+          </div>
+        </div>
+
+        <!-- Upcoming Schedule -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">⏰ Scheduled Posts (UTC → IST)</span></div>
+          <div class="card-body" id="schedule-list" style="display:flex;flex-direction:column;gap:10px">
+            <div class="empty" style="padding:20px">Loading schedule…</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /home -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: PIPELINES
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-pipelines">
+
+      <!-- Flow Diagram -->
+      <div class="pipeline-flow">
+        <div class="pf-stage">
+          <div class="pf-icon pf-info">📡</div>
+          <div class="pf-label">News Sources</div>
+          <div class="pf-count" id="pf-sources" style="color:var(--accent)">—</div>
+          <div class="pf-sub">RSS + API feeds</div>
+        </div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-stage">
+          <div class="pf-icon pf-ok">📥</div>
+          <div class="pf-label">Fetched</div>
+          <div class="pf-count" id="pf-fetched" style="color:var(--green)">—</div>
+          <div class="pf-sub">articles in DB</div>
+        </div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-stage">
+          <div class="pf-icon pf-warn">⭐</div>
+          <div class="pf-label">Scored</div>
+          <div class="pf-count" id="pf-scored" style="color:var(--yellow)">—</div>
+          <div class="pf-sub">relevance ranked</div>
+        </div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-stage">
+          <div class="pf-icon pf-purple">🤖</div>
+          <div class="pf-label">Captioned</div>
+          <div class="pf-count" id="pf-captioned" style="color:#a855f7">—</div>
+          <div class="pf-sub">AI-written captions</div>
+        </div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-stage">
+          <div class="pf-icon pf-info">🎨</div>
+          <div class="pf-label">Image Ready</div>
+          <div class="pf-count" id="pf-imaged" style="color:var(--accent)">—</div>
+          <div class="pf-sub">1080×1080 cards</div>
+        </div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-stage">
+          <div class="pf-icon pf-ok">📲</div>
+          <div class="pf-label">Posted</div>
+          <div class="pf-count" id="pf-posted" style="color:var(--green)">—</div>
+          <div class="pf-sub">live on Instagram</div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="flex ai-c gap8 mb" style="margin-bottom:14px">
+        <div class="ig-tabs" id="pipeline-filter" style="margin-bottom:0">
+          <button class="ig-tab active" onclick="setPipelineFilter('all',this)">All</button>
+          <button class="ig-tab fin" onclick="setPipelineFilter('finpulse',this)">FinPulse</button>
+          <button class="ig-tab tech" onclick="setPipelineFilter('techpulse',this)">TechPulse</button>
+          <button class="ig-tab corp" onclick="setPipelineFilter('corppulse',this)">CorpPulse</button>
+          <button class="ig-tab world" onclick="setPipelineFilter('worldpulse',this)">WorldPulse</button>
+        </div>
+        <span style="color:var(--muted);font-size:11px" id="pipeline-count"></span>
+      </div>
+
+      <div class="post-grid" id="pipeline-grid">
+        <div class="empty">Loading pipeline…</div>
+      </div>
+
+    </div><!-- /pipelines -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: INSTAGRAM MANAGE
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-instagram">
+
+      <div class="ig-tabs" id="ig-page-tabs">
+        <button class="ig-tab fin active" onclick="setIgPage('finpulse',this)">🟢 FinPulse</button>
+        <button class="ig-tab tech" onclick="setIgPage('techpulse',this)">TechPulse</button>
+        <button class="ig-tab corp" onclick="setIgPage('corppulse',this)">CorpPulse</button>
+        <button class="ig-tab world" onclick="setIgPage('worldpulse',this)">WorldPulse</button>
+      </div>
+
+      <div class="ig-split">
+        <div>
+          <div class="ig-col-title">
+            📬 Ready to Post
+            <span class="ig-count" id="ig-ready-count">0</span>
+          </div>
+          <div id="ig-ready-list"><div class="empty">Loading…</div></div>
+        </div>
+        <div>
+          <div class="ig-col-title">
+            ✅ Already Posted
+            <span class="ig-count" id="ig-posted-count">0</span>
+          </div>
+          <div id="ig-posted-list"><div class="empty">Loading…</div></div>
+        </div>
+      </div>
+
+    </div><!-- /instagram -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: FETCHER VISUALIZER
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-fetcher">
+
+      <!-- Stats row -->
+      <div class="fv-stats-row" id="fv-stats-row">
+        <div class="fv-stat"><div class="fv-stat-val" id="fv-s-sources" style="color:var(--accent)">—</div><div class="fv-stat-lbl">Sources</div></div>
+        <div class="fv-stat"><div class="fv-stat-val" id="fv-s-active" style="color:var(--green)">—</div><div class="fv-stat-lbl">Active</div></div>
+        <div class="fv-stat"><div class="fv-stat-val" id="fv-s-articles" style="color:var(--yellow)">—</div><div class="fv-stat-lbl">Articles Tracked</div></div>
+        <div class="fv-stat"><div class="fv-stat-val" id="fv-s-connections" style="color:var(--fin)">—</div><div class="fv-stat-lbl">Connections Drawn</div></div>
+      </div>
+
+      <!-- Control bar -->
+      <div class="fv-ctrl-bar">
+        <button class="btn btn-d" onclick="fvRefreshData()" style="display:flex;align-items:center;gap:6px;min-width:120px">
+          <span id="fv-refresh-icon">↻</span> Refresh Data
+        </button>
+
+        <div class="fv-fetch-wrap" id="fv-fetch-wrap">
+          <button class="btn btn-p" onclick="fvToggleFetchMenu(event)" style="display:flex;align-items:center;gap:6px">
+            ⚡ Fetch Now <span style="opacity:.6;font-size:10px;margin-left:2px">▾</span>
+          </button>
+          <div class="fv-fetch-menu" id="fv-fetch-menu">
+            <div class="fv-fetch-opt" onclick="fvFetchNow('all')"><span style="color:var(--accent)">●</span> All Pages</div>
+            <div class="fv-fetch-opt" onclick="fvFetchNow('finpulse')"><span style="color:var(--fin)">●</span> FinPulse</div>
+            <div class="fv-fetch-opt" onclick="fvFetchNow('techpulse')"><span style="color:var(--tech)">●</span> TechPulse</div>
+            <div class="fv-fetch-opt" onclick="fvFetchNow('corppulse')"><span style="color:var(--corp)">●</span> CorpPulse</div>
+            <div class="fv-fetch-opt" onclick="fvFetchNow('worldpulse')"><span style="color:var(--world)">●</span> WorldPulse</div>
+          </div>
+        </div>
+
+        <div class="fv-ctrl-sep"></div>
+        <div class="fv-spinner" id="fv-spinner"></div>
+        <span class="fv-last-updated" id="fv-last-updated">Not loaded yet</span>
+        <span id="fv-fetching-msg" style="font-size:11px;color:var(--accent);display:none">● Fetching in background…</span>
+        <div class="fv-autopoll" id="fv-autopoll-badge">
+          <div class="fv-autopoll-dot" id="fv-autopoll-dot"></div>
+          <span id="fv-autopoll-label">Auto-refresh: —</span>
+        </div>
+      </div>
+
+      <!-- Page filter bar -->
+      <div class="fv-filter-bar">
+        <button class="fv-filter-btn fv-f-active" onclick="fvSetPage('all',this)" style="background:var(--accent);border-color:var(--accent)">All Pages</button>
+        <button class="fv-filter-btn" onclick="fvSetPage('finpulse',this)">FinPulse</button>
+        <button class="fv-filter-btn" onclick="fvSetPage('techpulse',this)">TechPulse</button>
+        <button class="fv-filter-btn" onclick="fvSetPage('corppulse',this)">CorpPulse</button>
+        <button class="fv-filter-btn" onclick="fvSetPage('worldpulse',this)">WorldPulse</button>
+        <span class="fv-hint" id="fv-hint">Click a source to highlight its articles →</span>
+      </div>
+
+      <!-- Article controls (above right panel, offset to match it) -->
+      <div class="fv-art-ctrls" id="fv-art-ctrls">
+        <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Sort:</span>
+        <button class="fv-sort-btn active" id="fvsort-score"  onclick="fvSetSort('score',this)">Score ↓</button>
+        <button class="fv-sort-btn"        id="fvsort-newest" onclick="fvSetSort('newest',this)">Newest</button>
+        <button class="fv-sort-btn"        id="fvsort-source" onclick="fvSetSort('source',this)">Source A–Z</button>
+
+        <div class="fv-ctrl-sep"></div>
+
+        <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Min:</span>
+        <button class="fv-score-pill active" id="fvsc-0"  onclick="fvSetMinScore(0,this)">All</button>
+        <button class="fv-score-pill"        id="fvsc-30" onclick="fvSetMinScore(30,this)">30+</button>
+        <button class="fv-score-pill"        id="fvsc-60" onclick="fvSetMinScore(60,this)">60+</button>
+        <button class="fv-score-pill"        id="fvsc-80" onclick="fvSetMinScore(80,this)">80+</button>
+
+        <div class="fv-ctrl-sep"></div>
+
+        <label class="fv-toggle-lbl" onclick="fvToggleHidePosted()">
+          <div class="fv-toggle-track" id="fv-hide-track"><div class="fv-toggle-thumb"></div></div>
+          Hide posted
+        </label>
+
+        <div class="fv-ctrl-sep"></div>
+
+        <input type="text" class="fv-search" id="fv-search" placeholder="🔍 Search articles…" oninput="fvSetSearch(this.value)">
+        <span id="fv-art-count" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+
+      <!-- Main visualization -->
+      <div id="fviz-wrap">
+        <svg id="fviz-svg"></svg>
+        <div class="fv-left-panel" id="fviz-left">
+          <div class="empty" style="padding:20px 0">Loading sources…</div>
+        </div>
+        <div class="fv-right-panel" id="fviz-right">
+          <div class="empty" style="padding:20px 0">Loading articles…</div>
+        </div>
+      </div>
+
+    </div><!-- /fetcher -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: DATA SOURCES CONTROL
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-datasources">
+
+      <!-- Stats row -->
+      <div class="ds-stats-row" id="ds-stats-row">
+        <div class="ds-stat">
+          <div class="ds-stat-val" id="ds-s-total" style="color:var(--accent)">—</div>
+          <div class="ds-stat-lbl">Total Sources</div>
+        </div>
+        <div class="ds-stat">
+          <div class="ds-stat-val" id="ds-s-active" style="color:var(--green)">—</div>
+          <div class="ds-stat-lbl">Active (OK)</div>
+        </div>
+        <div class="ds-stat">
+          <div class="ds-stat-val" id="ds-s-articles" style="color:var(--blue)">—</div>
+          <div class="ds-stat-lbl">Total Articles</div>
+        </div>
+        <div class="ds-stat">
+          <div class="ds-stat-val" id="ds-s-images" style="color:var(--tech)">—</div>
+          <div class="ds-stat-lbl">With Image</div>
+        </div>
+        <div class="ds-stat">
+          <div class="ds-stat-val" id="ds-s-posted" style="color:var(--corp)">—</div>
+          <div class="ds-stat-lbl">Posted</div>
+        </div>
+      </div>
+
+      <!-- Page filter -->
+      <div class="ds-filter-bar" id="ds-filter-bar">
+        <button class="ds-filter-btn active" onclick="dsSetPage('all',this)" style="background:var(--accent);border-color:var(--accent)">All Pages</button>
+        <button class="ds-filter-btn" onclick="dsSetPage('finpulse',this)">FinPulse</button>
+        <button class="ds-filter-btn" onclick="dsSetPage('techpulse',this)">TechPulse</button>
+        <button class="ds-filter-btn" onclick="dsSetPage('corppulse',this)">CorpPulse</button>
+        <button class="ds-filter-btn" onclick="dsSetPage('worldpulse',this)">WorldPulse</button>
+      </div>
+
+      <!-- Source grid -->
+      <div class="ds-grid" id="ds-grid">
+        <div class="empty">Loading sources…</div>
+      </div>
+
+      <!-- Drill-down panel (hidden until source clicked) -->
+      <div class="ds-drill" id="ds-drill" style="display:none">
+        <div class="ds-drill-header">
+          <button class="ds-drill-back" onclick="dsClearDrill()">← Back</button>
+          <span class="ds-drill-title" id="ds-drill-title">Source</span>
+          <span class="ds-status-badge" id="ds-drill-status" style="margin-left:auto"></span>
+          <button class="btn btn-d btn-sm" onclick="dsFetchSource()" style="margin-left:8px" id="ds-drill-fetch-btn">⚡ Fetch Now</button>
+        </div>
+        <!-- Pipeline summary -->
+        <div class="ds-drill-pipeline" id="ds-drill-pipeline">
+          <div class="ds-pipe-chip">
+            <div class="ds-pipe-chip-n" id="dsp-fetched">—</div>
+            <div class="ds-pipe-chip-l">Fetched</div>
+          </div>
+          <div class="ds-pipe-chip">
+            <div class="ds-pipe-chip-n" id="dsp-captioned" style="color:var(--accent)">—</div>
+            <div class="ds-pipe-chip-l">Captioned</div>
+          </div>
+          <div class="ds-pipe-chip">
+            <div class="ds-pipe-chip-n" id="dsp-image" style="color:var(--corp)">—</div>
+            <div class="ds-pipe-chip-l">Image Ready</div>
+          </div>
+          <div class="ds-pipe-chip">
+            <div class="ds-pipe-chip-n" id="dsp-posted" style="color:var(--green)">—</div>
+            <div class="ds-pipe-chip-l">Posted</div>
+          </div>
+          <div class="ds-pipe-chip" style="margin-left:auto">
+            <div class="ds-pipe-chip-n" id="dsp-with-image" style="color:var(--tech)">—</div>
+            <div class="ds-pipe-chip-l">Has RSS Image</div>
+          </div>
+        </div>
+        <!-- Stage filter + view toggle -->
+        <div class="ds-drill-tabs">
+          <button class="ds-tab active" onclick="dsSetStageFilter('all',this)">All</button>
+          <button class="ds-tab" onclick="dsSetStageFilter('fetched',this)">Fetched</button>
+          <button class="ds-tab" onclick="dsSetStageFilter('captioned',this)">Captioned</button>
+          <button class="ds-tab" onclick="dsSetStageFilter('image_ready',this)">Image Ready</button>
+          <button class="ds-tab" onclick="dsSetStageFilter('posted',this)">Posted</button>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+            <button class="ds-tab" id="ds-view-images" onclick="dsToggleImageOnly(this)" title="Show only articles with images" style="background:rgba(99,179,237,0.08);border-color:rgba(99,179,237,0.3)">🖼 Images Only</button>
+            <button class="ds-tab active" id="ds-view-list" onclick="dsSetView('list',this)" title="List view">☰ List</button>
+            <button class="ds-tab" id="ds-view-gallery" onclick="dsSetView('gallery',this)" title="Image gallery">⊞ Gallery</button>
+          </div>
+        </div>
+        <!-- Article list -->
+        <div class="ds-article-list" id="ds-article-list">
+          <div class="empty">Select a source to see its articles</div>
+        </div>
+      </div>
+
+    </div><!-- /datasources -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: SOURCES
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-sources">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📡 All RSS & API Sources</span>
+          <span style="color:var(--muted);font-size:11px" id="sources-summary"></span>
+        </div>
+        <table class="tbl" id="sources-tbl">
+          <thead>
+            <tr>
+              <th>Status</th><th>Source</th><th>Page</th><th>Type</th>
+              <th>Articles</th><th>Fetches</th><th>Errors</th><th>Last Fetch</th>
+            </tr>
+          </thead>
+          <tbody id="sources-body"></tbody>
+        </table>
+      </div>
+    </div><!-- /sources -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: LOGS
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-logs">
+      <div class="g2" style="gap:16px">
+        <div>
+          <div class="card mb">
+            <div class="card-header">
+              <span class="card-title">🖥 Scheduler Log</span>
+              <span style="color:var(--muted);font-size:11px">last 100 lines</span>
+            </div>
+            <div class="log-wrap" id="log-body"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">⚠️ Error Console</span>
+              <span style="color:var(--red);font-size:11px" id="err-count-badge"></span>
+            </div>
+            <div id="error-list" style="max-height:500px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /logs -->
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div id="toast"></div>
+<div id="ds-lightbox" onclick="dsCloseLightbox()">
+  <img id="ds-lightbox-img" src="" alt="">
+  <div id="ds-lightbox-caption"></div>
+</div>
+
+<!-- Article Detail Modal -->
+<div id="am-backdrop" onclick="amHandleBackdropClick(event)">
+  <div id="am-wrap">
+    <div id="am-topbar"></div>
+    <div class="am-header">
+      <div class="am-title" id="am-title"></div>
+      <button class="am-close" onclick="dsCloseArticleModal()">✕ Close</button>
+    </div>
+    <div class="am-body" id="am-body"></div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let currentPage = 'home';
+let pipelineFilter = 'all';
+let igPage = 'finpulse';
+let pipelineData = [];
+let countdownSecs = 30;
+let countdownTimer;
+let activityChart;
+
+const PAGE_TITLES = {home:'Home',pipelines:'Pipelines',instagram:'Instagram Manage',datasources:'Data Source Control',sources:'Sources Table',fetcher:'Fetcher — Source Visualizer',logs:'Logs & Errors'};
+
+// ── UTILS ──
+function toast(msg, color='var(--green)') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = color;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 3000);
+}
+function timeAgo(iso) {
+  if (!iso || iso === 'null' || iso === 'undefined') return '—';
+  const ts = new Date(iso.endsWith('Z') ? iso : iso + 'Z').getTime();
+  if (isNaN(ts)) return '—';
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 0)    return 'just now';
+  if (diff < 60)   return Math.round(diff) + 's ago';
+  if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+  return Math.round(diff / 86400) + 'd ago';
+}
+function toIST(isoStr) {
+  if (!isoStr) return '';
+  return new Date(isoStr).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:true})+' IST';
+}
+function tagClass(page) {
+  return 'tag-'+(page||'fin').replace('pulse','');
+}
+function stageLabel(item) {
+  if (item.post_status==='posted') return '<span class="post-stage stage-posted">Posted</span>';
+  if (item.image_file)             return '<span class="post-stage stage-ready">Image Ready</span>';
+  if (item.caption)                return '<span class="post-stage stage-pending">Captioned</span>';
+  if (item.score>0)                return '<span class="post-stage stage-fetched">Scored</span>';
+  return '<span class="post-stage stage-fetched">Fetched</span>';
+}
+
+// ── NAVIGATION ──
+function go(page, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(btn) btn.classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[page]||page;
+  currentPage = page;
+  loadPage(page);
+}
+
+function loadPage(page) {
+  if (page==='home')        { loadStats(); loadActivity(); loadSchedule(); }
+  if (page==='pipelines')   { loadPipeline(); }
+  if (page==='instagram')   { loadIg(); }
+  if (page==='datasources') { loadDataSources(); }
+  if (page==='sources')     { loadSources(); }
+  if (page==='fetcher')     { loadFetcher(); }
+  if (page==='logs')        { loadLog(); loadErrors(); }
+}
+
+// ── STATS (HOME) ──
+async function loadStats() {
+  const d = await fetch('/api/stats').then(r=>r.json());
+  document.getElementById('h-articles').textContent = d.total_articles??0;
+  document.getElementById('h-posted').textContent   = d.total_posted??0;
+  document.getElementById('h-pending').textContent  = d.total_pending??0;
+
+  const ok=d.sources_ok??0, tot=d.total_sources??0;
+  const srcEl = document.getElementById('h-sources');
+  srcEl.textContent = `${ok}/${tot}`;
+  srcEl.style.color = ok===tot?'var(--green)':ok>0?'var(--yellow)':'var(--red)';
+
+  document.getElementById('sb-status').textContent = `${d.total_articles} articles · ${d.total_posted} posted`;
+
+  // per-page
+  const pages={finpulse:{t:0,p:0,q:0},techpulse:{t:0,p:0,q:0},corppulse:{t:0,p:0,q:0},worldpulse:{t:0,p:0,q:0}};
+  (d.per_page||[]).forEach(r=>{ if(pages[r.page]){pages[r.page].t=r.total;pages[r.page].p=r.posted;pages[r.page].q=r.ready_queue||0;} });
+  ['fin','tech','corp','world'].forEach(pre=>{
+    const k=pre+'pulse', info=pages[k];
+    document.getElementById('ac-'+pre+'-total').textContent  = info.t;
+    document.getElementById('ac-'+pre+'-posted').textContent = info.p;
+    document.getElementById('ac-'+pre+'-q').textContent      = info.q;
+  });
+}
+
+// ── ACTIVITY CHART ──
+async function loadActivity() {
+  const d = await fetch('/api/activity').then(r=>r.json());
+  const labels = getLast7Days();
+  const artMap = {}; (d.articles||[]).forEach(r=>artMap[r.day]=r.count);
+  const pstMap = {}; (d.posts||[]).forEach(r=>pstMap[r.day]=r.count);
+  const artData = labels.map(l=>artMap[l]||0);
+  const pstData = labels.map(l=>pstMap[l]||0);
+  const displayLabels = labels.map(l=>{ const [y,m,day]=l.split('-'); return `${day}/${m}`; });
+
+  const ctx = document.getElementById('activity-chart').getContext('2d');
+  if (activityChart) activityChart.destroy();
+  activityChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: displayLabels,
+      datasets: [
+        { label:'Articles Fetched', data:artData, backgroundColor:'rgba(99,102,241,0.6)', borderRadius:4 },
+        { label:'Posts Published',  data:pstData, backgroundColor:'rgba(34,197,94,0.7)',  borderRadius:4 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:true,
+      plugins:{ legend:{ labels:{ color:'#6b7280', font:{size:11} } } },
+      scales:{
+        x:{ ticks:{color:'#6b7280',font:{size:10}}, grid:{color:'#1e2030'} },
+        y:{ ticks:{color:'#6b7280',font:{size:10},precision:0}, grid:{color:'#1e2030'} }
+      }
+    }
+  });
+}
+function getLast7Days() {
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  return days;
+}
+
+// ── SCHEDULE ──
+async function loadSchedule() {
+  const d = await fetch('/api/schedule').then(r=>r.json());
+  const slots = d.next||[];
+  if(!slots.length){ document.getElementById('schedule-list').innerHTML='<div class="empty">No upcoming slots</div>'; return; }
+
+  const now = Date.now();
+  const nextMs = new Date(slots[0]).getTime() - now;
+  const hh=Math.floor(nextMs/3600000), mm=Math.floor((nextMs%3600000)/60000);
+  document.getElementById('h-next').textContent = hh>0?`${hh}h ${mm}m`:`${mm}m`;
+  document.getElementById('h-next-ist').textContent = toIST(slots[0]);
+
+  const maxMs = new Date(slots[slots.length-1]).getTime() - now;
+  document.getElementById('schedule-list').innerHTML = slots.map(slot=>{
+    const ms = new Date(slot).getTime()-now;
+    const h2=Math.floor(ms/3600000), m2=Math.floor((ms%3600000)/60000);
+    const pct = Math.max(0,Math.min(100,100-(ms/maxMs*100)));
+    return `<div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:14px;font-weight:700;min-width:55px">${h2>0?h2+'h ':''} ${m2}m</div>
+      <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:2px"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);min-width:80px;text-align:right">${toIST(slot)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── PIPELINE ──
+async function loadPipeline() {
+  const [d, stats] = await Promise.all([
+    fetch('/api/pipeline').then(r=>r.json()),
+    fetch('/api/stats').then(r=>r.json()),
+  ]);
+  pipelineData = d.items||[];
+
+  // update flow counts from real data
+  const s = d.stages||{};
+  document.getElementById('pf-sources').textContent  = stats.sources_ok||'—';
+  document.getElementById('pf-fetched').textContent  = s.fetched||0;
+  document.getElementById('pf-scored').textContent   = s.scored||0;
+  document.getElementById('pf-captioned').textContent= s.captioned||0;
+  document.getElementById('pf-imaged').textContent   = s.imaged||0;
+  document.getElementById('pf-posted').textContent   = s.posted||0;
+
+  renderPipelineGrid();
+}
+
+function renderPipelineGrid() {
+  const items = pipelineFilter==='all'
+    ? pipelineData
+    : pipelineData.filter(i=>i.page===pipelineFilter);
+
+  document.getElementById('pipeline-count').textContent = items.length+' items';
+
+  if (!items.length) {
+    document.getElementById('pipeline-grid').innerHTML='<div class="empty">No articles yet — run the pipeline first.</div>';
+    return;
+  }
+
+  document.getElementById('pipeline-grid').innerHTML = items.map(item=>{
+    const imgHtml = item.image_file
+      ? `<img src="/img/${item.image_file}" alt="post image" loading="lazy" onerror="this.parentElement.innerHTML='🖼'">`
+      : `🖼`;
+    return `<div class="post-card">
+      <div class="post-img">${imgHtml}</div>
+      <div class="post-info">
+        <div class="post-title">${item.title||'Untitled'}</div>
+        <div class="post-meta">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="post-page-tag ${tagClass(item.page)}">${(item.page||'').replace('pulse','')}</span>
+            ${stageLabel(item)}
+          </div>
+          <span class="post-source">${item.source_name||''}</span>
+        </div>
+        ${item.score?`<div style="margin-top:6px;font-size:10px;color:var(--muted)">Score: <b style="color:var(--text)">${Math.round(item.score)}</b> · ${timeAgo(item.fetched_at)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setPipelineFilter(page, btn) {
+  pipelineFilter = page;
+  document.querySelectorAll('#pipeline-filter .ig-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderPipelineGrid();
+}
+
+// ── INSTAGRAM MANAGE ──
+async function loadIg() {
+  const [ready, posted] = await Promise.all([
+    fetch(`/api/posts?page=${igPage}&status=pending&limit=30`).then(r=>r.json()),
+    fetch(`/api/posts?page=${igPage}&status=posted&limit=30`).then(r=>r.json()),
+  ]);
+
+  document.getElementById('ig-ready-count').textContent = ready.length;
+  document.getElementById('ig-posted-count').textContent = posted.length;
+
+  document.getElementById('ig-ready-list').innerHTML = ready.length
+    ? ready.map(p=>igCard(p, false)).join('')
+    : '<div class="empty">No posts in queue for this page.</div>';
+
+  document.getElementById('ig-posted-list').innerHTML = posted.length
+    ? posted.map(p=>igCard(p, true)).join('')
+    : '<div class="empty">No published posts yet for this page.</div>';
+}
+
+function igCard(p, isPosted) {
+  const imgHtml = p.image_file
+    ? `<img class="ig-card-img" src="/img/${p.image_file}" alt="post" onerror="this.outerHTML='<div class=ig-card-img-ph>🖼</div>'">`
+    : `<div class="ig-card-img-ph">🖼</div>`;
+
+  const caption = (p.caption||'').substring(0,100);
+  const foot = isPosted
+    ? `<div class="ig-id">ID: ${p.instagram_post_id||'—'}</div><div class="ig-time">${timeAgo(p.posted_at)}</div>`
+    : `<button class="ig-post-btn" onclick="triggerPost('${p.page}')">Post Now</button><div class="ig-time">${timeAgo(p.created_at)}</div>`;
+
+  return `<div class="ig-card">
+    ${imgHtml}
+    <div class="ig-card-body">
+      <div class="ig-card-title">${p.title||'Untitled'}</div>
+      <div class="ig-card-caption">${caption}${caption.length>=100?'…':''}</div>
+      <div class="ig-card-foot">${foot}</div>
+    </div>
+  </div>`;
+}
+
+function setIgPage(page, btn) {
+  igPage = page;
+  document.querySelectorAll('#ig-page-tabs .ig-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  loadIg();
+}
+
+// ── SOURCES ──
+async function loadSources() {
+  const sources = await fetch('/api/sources').then(r=>r.json());
+  document.getElementById('sources-summary').textContent =
+    sources.filter(s=>s.last_status==='ok').length + '/' + sources.length + ' active';
+
+  if (!sources.length) {
+    document.getElementById('sources-body').innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">No sources registered</td></tr>';
+    return;
+  }
+
+  document.getElementById('sources-body').innerHTML = sources.map(s=>{
+    const ok = s.last_status==='ok';
+    const never = s.last_status==='never';
+    const dot = ok ? 'dot-g' : never ? 'dot-y' : 'dot-r';
+    const pageColor = {finpulse:'var(--fin)',techpulse:'var(--tech)',corppulse:'var(--corp)',worldpulse:'var(--world)'}[s.page]||'var(--muted)';
+    return `<tr>
+      <td><div class="dot ${dot}"></div></td>
+      <td>${s.display_name||s.name}</td>
+      <td><span style="color:${pageColor};font-weight:700">${s.page}</span></td>
+      <td style="color:var(--muted)">${s.source_type}</td>
+      <td>${s.total_articles||0}</td>
+      <td>${s.total_fetches||0}</td>
+      <td style="color:${s.total_errors>0?'var(--red)':'var(--muted)'}">${s.total_errors||0}</td>
+      <td style="color:var(--muted)">${timeAgo(s.last_fetched_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── LOG ──
+async function loadLog() {
+  const lines = await fetch('/api/log?n=100').then(r=>r.json());
+  const html = lines.map(l=>{
+    let cls='ll-info';
+    if (l.includes('✅')||l.includes('Posted')||l.includes('SUCCESS')) cls='ll-ok';
+    else if (l.includes('ERROR')||l.includes('❌')||l.includes('failed')) cls='ll-err';
+    else if (l.includes('WARN')||l.includes('⚠')) cls='ll-warn';
+    return `<div class="log-line ${cls}">${l.replace(/</g,'&lt;')}</div>`;
+  }).join('');
+  const el = document.getElementById('log-body');
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadErrors() {
+  const errors = await fetch('/api/errors?limit=40').then(r=>r.json());
+  document.getElementById('err-count-badge').textContent = errors.length ? errors.length+' errors' : '';
+  if (!errors.length) {
+    document.getElementById('error-list').innerHTML='<div class="empty">✓ No errors logged</div>'; return;
+  }
+  document.getElementById('error-list').innerHTML = errors.map(e=>`
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:2px">${e.source_name} · ${e.error_type||'error'}</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.4;word-break:break-word">${(e.error_msg||'').substring(0,200)}</div>
+      <div style="font-size:10px;color:var(--border);margin-top:3px">${timeAgo(e.occurred_at)}</div>
+    </div>
+  `).join('');
+}
+
+// ── TRIGGER ──
+async function triggerPost(page, dryRun=false) {
+  toast(`⚡ ${dryRun?'Dry run':'Post cycle'} triggered for ${page}…`, 'var(--accent)');
+  await fetch(`/api/trigger/${page}${dryRun?'?dry=1':''}`);
+  setTimeout(()=>{ refreshAll(); }, 5000);
+}
+
+// ── REFRESH ──
+async function refreshAll() {
+  document.getElementById('refresh-info').textContent = 'Refreshing…';
+  try {
+    loadPage(currentPage);
+    // always keep stats fresh for sidebar
+    if (currentPage!=='home') loadStats();
+    const now = new Date();
+    document.getElementById('refresh-info').textContent =
+      'Updated '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  } catch(e) {
+    document.getElementById('refresh-info').textContent = '⚠ Connection error';
+    document.getElementById('sys-chip').textContent = '● OFFLINE';
+    document.getElementById('sys-chip').className = 'chip chip-yellow';
+  }
+  countdownSecs = 30;
+}
+
+function startCountdown() {
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(()=>{
+    countdownSecs--;
+    document.getElementById('refresh-info').textContent = `Refreshing in ${countdownSecs}s`;
+    if (countdownSecs<=0) refreshAll();
+  }, 1000);
+}
+
+// ══════════════════════════════════════════
+// FETCHER VISUALIZER
+// ══════════════════════════════════════════
+const FV_PAGE_COLORS = {
+  finpulse:  '#14b8a6',
+  techpulse: '#a855f7',
+  corppulse: '#f97316',
+  worldpulse:'#ec4899',
+};
+const FV_PAGE_LABELS = {finpulse:'FIN',techpulse:'TECH',corppulse:'CORP',worldpulse:'WORLD'};
+
+let fvSources    = [];
+let fvArticles   = [];
+let fvActiveSrc  = null;
+let fvActivePage = 'all';
+let fvSort       = 'score';   // 'score' | 'newest' | 'source'
+let fvMinScore   = 0;
+let fvHidePosted = false;
+let fvSearchQ    = '';
+let fvFetchTimer = null;
+
+// ── LOAD & REFRESH ──────────────────────────────────────────────────────────
+
+async function loadFetcher(silent=false) {
+  if (!silent) fvSetLoading(true);
+  try {
+    const [srcData, pipeData] = await Promise.all([
+      fetch('/api/sources').then(r=>r.json()).catch(()=>[]),
+      fetch('/api/pipeline').then(r=>r.json()).catch(()=>({items:[]})),
+    ]);
+    fvSources  = srcData || [];
+    fvArticles = pipeData.items || [];
+    fvActiveSrc = null;
+    fvRender();
+    const t = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const el = document.getElementById('fv-last-updated');
+    if (el) el.textContent = `Updated ${t}`;
+  } finally {
+    if (!silent) fvSetLoading(false);
+  }
+}
+
+function fvSetLoading(on) {
+  const sp = document.getElementById('fv-spinner');
+  const ic = document.getElementById('fv-refresh-icon');
+  if (sp) sp.classList.toggle('fv-spin', on);
+  if (ic) ic.textContent = on ? '⟳' : '↻';
+}
+
+async function fvRefreshData() {
+  await loadFetcher();
+}
+
+// ── FETCH NOW ────────────────────────────────────────────────────────────────
+
+function fvToggleFetchMenu(e) {
+  e.stopPropagation();
+  document.getElementById('fv-fetch-menu')?.classList.toggle('open');
+}
+document.addEventListener('click', ()=>{
+  document.getElementById('fv-fetch-menu')?.classList.remove('open');
+});
+
+async function fvFetchNow(page) {
+  document.getElementById('fv-fetch-menu')?.classList.remove('open');
+  const msg = document.getElementById('fv-fetching-msg');
+  if (msg) msg.style.display = 'inline';
+  toast(`⚡ Fetching ${page==='all'?'all pages':page}…`, 'var(--accent)');
+  try { await fetch(`/api/fetch/${page}`); } catch(e) {}
+  // Background fetch → poll every 5s, reload view, stop after 20s
+  let tries = 0;
+  clearTimeout(fvFetchTimer);
+  const poll = async () => {
+    tries++;
+    await loadFetcher(true);
+    if (tries < 4) {
+      fvFetchTimer = setTimeout(poll, 5000);
+    } else {
+      if (msg) msg.style.display = 'none';
+      toast('✓ Feed refreshed', 'var(--green)');
+    }
+  };
+  fvFetchTimer = setTimeout(poll, 5000);
+}
+
+// ── ARTICLE CONTROLS ────────────────────────────────────────────────────────
+
+function fvSetSort(sort, btn) {
+  fvSort = sort;
+  document.querySelectorAll('.fv-sort-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  fvRenderArticles();
+  requestAnimationFrame(()=>requestAnimationFrame(fvDrawLines));
+}
+
+function fvSetMinScore(min, btn) {
+  fvMinScore = min;
+  document.querySelectorAll('.fv-score-pill').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  fvRenderArticles();
+  requestAnimationFrame(()=>requestAnimationFrame(fvDrawLines));
+}
+
+function fvToggleHidePosted() {
+  fvHidePosted = !fvHidePosted;
+  const track = document.getElementById('fv-hide-track');
+  if (track) track.classList.toggle('on', fvHidePosted);
+  fvRenderArticles();
+  requestAnimationFrame(()=>requestAnimationFrame(fvDrawLines));
+}
+
+function fvSetSearch(q) {
+  fvSearchQ = q.toLowerCase().trim();
+  fvRenderArticles();
+  requestAnimationFrame(()=>requestAnimationFrame(fvDrawLines));
+}
+
+// ── PAGE FILTER ──────────────────────────────────────────────────────────────
+
+function fvSetPage(page, btn) {
+  fvActivePage = page;
+  fvActiveSrc  = null;
+  document.querySelectorAll('.fv-filter-btn').forEach(b=>{
+    b.classList.remove('fv-f-active');
+    b.style.background = b.style.borderColor = b.style.color = '';
+  });
+  btn.classList.add('fv-f-active');
+  const color = page==='all' ? 'var(--accent)' : FV_PAGE_COLORS[page]||'var(--accent)';
+  btn.style.background = btn.style.borderColor = color;
+  btn.style.color = '#000';
+  fvRender();
+}
+
+function fvSelectSource(displayName) {
+  fvActiveSrc = (fvActiveSrc === displayName) ? null : displayName;
+  document.querySelectorAll('.fv-src-card').forEach(c=>{
+    c.classList.toggle('fv-active', c.dataset.srcName === fvActiveSrc);
+  });
+  fvRenderArticles();
+  requestAnimationFrame(()=>requestAnimationFrame(fvDrawLines));
+  const hint = document.getElementById('fv-hint');
+  if (fvActiveSrc) {
+    const n = fvFilteredArticles().length;
+    hint.textContent = `${n} article${n!==1?'s':''} from "${fvActiveSrc}" — click again to clear`;
+  } else {
+    hint.textContent = 'Click a source to highlight its articles →';
+  }
+}
+
+// ── DATA FILTERS ─────────────────────────────────────────────────────────────
+
+function fvFilteredSources() {
+  return fvActivePage==='all' ? fvSources : fvSources.filter(s=>s.page===fvActivePage);
+}
+
+function fvFilteredArticles() {
+  let arts = fvActivePage==='all' ? fvArticles : fvArticles.filter(a=>a.page===fvActivePage);
+  if (fvActiveSrc) arts = arts.filter(a=>a.source_name===fvActiveSrc);
+  if (fvMinScore > 0) arts = arts.filter(a=>(a.score||0) >= fvMinScore);
+  if (fvHidePosted)   arts = arts.filter(a=>a.post_status !== 'posted');
+  if (fvSearchQ)      arts = arts.filter(a=>
+    (a.title||'').toLowerCase().includes(fvSearchQ) ||
+    (a.source_name||'').toLowerCase().includes(fvSearchQ)
+  );
+  if (fvSort==='score')  arts = [...arts].sort((a,b)=>(b.score||0)-(a.score||0));
+  else if (fvSort==='newest') arts = [...arts].sort((a,b)=>new Date(b.fetched_at||0)-new Date(a.fetched_at||0));
+  else if (fvSort==='source') arts = [...arts].sort((a,b)=>(a.source_name||'').localeCompare(b.source_name||''));
+  return arts;
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+
+function fvRender() {
+  fvUpdateStats();
+  fvRenderSources();
+  fvRenderArticles();
+  requestAnimationFrame(()=>requestAnimationFrame(fvDrawLines));
+}
+
+function fvUpdateStats() {
+  const sources  = fvFilteredSources();
+  const articles = fvActivePage==='all' ? fvArticles : fvArticles.filter(a=>a.page===fvActivePage);
+  document.getElementById('fv-s-sources').textContent  = sources.length;
+  document.getElementById('fv-s-active').textContent   = sources.filter(s=>s.last_status==='ok').length;
+  document.getElementById('fv-s-articles').textContent = articles.length;
+  const srcNames  = new Set(sources.map(s=>s.display_name));
+  const connected = articles.filter(a=>srcNames.has(a.source_name)).length;
+  document.getElementById('fv-s-connections').textContent = connected;
+}
+
+function fvRenderSources() {
+  const el      = document.getElementById('fviz-left');
+  const sources = fvFilteredSources();
+  const groups  = {finpulse:[],techpulse:[],corppulse:[],worldpulse:[]};
+  for (const s of sources) { if (groups[s.page]) groups[s.page].push(s); }
+
+  let html = '';
+  for (const [page, srcs] of Object.entries(groups)) {
+    if (!srcs.length) continue;
+    const color = FV_PAGE_COLORS[page] || '#888';
+    const label = FV_PAGE_LABELS[page] || page;
+    html += `<div class="fv-pg-group">
+      <div class="fv-pg-label" style="color:${color}">${label}PULSE</div>`;
+    for (const s of srcs) {
+      const isActive  = fvActiveSrc === s.display_name;
+      const statusMap = {ok:'fv-src-status-ok',error:'fv-src-status-err',timeout:'fv-src-status-to',never:'fv-src-status-nv'};
+      const statusCls = statusMap[s.last_status] || 'fv-src-status-nv';
+      const statusTxt = {ok:'OK',error:'ERR',timeout:'T/O',never:'NEW'}[s.last_status] || 'NEW';
+      const dotColor  = s.last_status==='ok'?'var(--green)':s.last_status==='never'?'var(--muted)':'var(--yellow)';
+      html += `<div class="fv-src-card ${isActive?'fv-active':''}"
+                    id="fsrc-${s.name}" data-src-name="${s.display_name}"
+                    onclick="fvSelectSource('${s.display_name.replace(/'/g,"\\'")}')"
+                    style="border-left-color:${color}">
+        <div class="fv-src-row">
+          <div class="dot" style="background:${dotColor};flex-shrink:0"></div>
+          <div class="fv-src-name">${s.display_name}</div>
+        </div>
+        <div class="fv-src-foot">
+          <span class="fv-src-badge ${statusCls}">${statusTxt}</span>
+          <span class="fv-src-type">${(s.source_type||'rss').toUpperCase()}</span>
+          <span class="fv-src-count">${s.total_articles||0} art.</span>
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html || '<div class="empty" style="padding:20px 0">No sources</div>';
+}
+
+function fvRenderArticles() {
+  const el       = document.getElementById('fviz-right');
+  const articles = fvFilteredArticles();
+
+  // Article count label
+  const countEl = document.getElementById('fv-art-count');
+  if (countEl) {
+    const total = (fvActivePage==='all' ? fvArticles : fvArticles.filter(a=>a.page===fvActivePage)).length;
+    countEl.textContent = articles.length < total ? `${articles.length} / ${total}` : `${total} articles`;
+  }
+
+  if (!articles.length) {
+    el.innerHTML = '<div class="empty" style="padding:40px 0">No articles match your filters</div>';
+    return;
+  }
+
+  let html = '';
+  for (const a of articles) {
+    const page  = a.page || 'finpulse';
+    const color = FV_PAGE_COLORS[page] || '#888';
+    const score = Math.round(a.score || 0);
+    const isHL  = fvActiveSrc && a.source_name === fvActiveSrc;
+    let stageBadge = '';
+    if      (a.post_status==='posted') stageBadge = '<span class="post-stage stage-posted">Posted</span>';
+    else if (a.image_file)             stageBadge = '<span class="post-stage stage-ready">Image Ready</span>';
+    else if (a.caption)                stageBadge = '<span class="post-stage stage-pending">Captioned</span>';
+    else                               stageBadge = '<span class="post-stage stage-fetched">Fetched</span>';
+
+    html += `<div class="fv-art-card ${isHL?'fv-highlight':''}"
+                  id="fart-${a.id}" data-src="${a.source_name||''}"
+                  style="${isHL?`color:${color};border-color:${color}44`:''}">
+      <div class="fv-art-score-col" style="background:${color}12">
+        <div class="fv-art-score" style="color:${color}">${score}</div>
+        <div class="fv-art-score-lbl">pts</div>
+      </div>
+      <div class="fv-art-body">
+        <div class="fv-art-title">${a.title||''}</div>
+        <div class="fv-art-meta">
+          <span class="fv-art-src" style="color:${color}">${a.source_name||''}</span>
+          <span style="color:var(--border)">·</span>
+          ${stageBadge}
+          ${a.fetched_at?`<span class="fv-art-time">${timeAgo(a.fetched_at)}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ── SVG BEZIER LINES ─────────────────────────────────────────────────────────
+
+function fvDrawLines() {
+  const svg  = document.getElementById('fviz-svg');
+  const wrap = document.getElementById('fviz-wrap');
+  if (!svg || !wrap) return;
+
+  const wrapRect = wrap.getBoundingClientRect();
+  const svgH     = wrap.offsetHeight;
+  svg.setAttribute('viewBox', `0 0 ${wrapRect.width} ${svgH}`);
+  svg.style.height = svgH + 'px';
+
+  const artsBySource = {};
+  document.querySelectorAll('.fv-art-card[data-src]').forEach(el => {
+    const src = el.dataset.src;
+    if (!src) return;
+    (artsBySource[src] = artsBySource[src]||[]).push(el);
+  });
+
+  let paths = '', connCount = 0;
+  for (const [srcName, artEls] of Object.entries(artsBySource)) {
+    const srcCard = [...document.querySelectorAll('.fv-src-card')].find(c=>c.dataset.srcName===srcName);
+    if (!srcCard) continue;
+    const pageColor = FV_PAGE_COLORS[fvSources.find(s=>s.display_name===srcName)?.page||'finpulse']||'#888';
+    const isActive  = fvActiveSrc === srcName;
+    const hasFilter = !!fvActiveSrc;
+    const opacity   = hasFilter ? (isActive ? 0.75 : 0.04) : 0.28;
+    const strokeW   = isActive ? 2.5 : 1.2;
+    const srcRect   = srcCard.getBoundingClientRect();
+    const x1 = srcRect.right - wrapRect.left;
+    const y1 = srcRect.top + srcRect.height/2 - wrapRect.top;
+    for (const artEl of artEls) {
+      const r   = artEl.getBoundingClientRect();
+      const x2  = r.left - wrapRect.left;
+      const y2  = r.top + r.height/2 - wrapRect.top;
+      const cpx1 = x1 + (x2-x1)*0.4, cpx2 = x2 - (x2-x1)*0.4;
+      const d = `M${x1.toFixed(1)},${y1.toFixed(1)} C${cpx1.toFixed(1)},${y1.toFixed(1)} ${cpx2.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
+      paths += `<path d="${d}" stroke="${pageColor}" stroke-width="${strokeW}" fill="none" opacity="${opacity}" data-src="${srcName}"/>`;
+      connCount++;
+    }
+  }
+  svg.innerHTML = paths;
+  const el = document.getElementById('fv-s-connections');
+  if (el) el.textContent = connCount;
+}
+
+// ══════════════════════════════════════════
+// DATA SOURCES CONTROL PAGE
+// ══════════════════════════════════════════
+
+const DS_PAGE_COLORS = {
+  finpulse:'#14b8a6', techpulse:'#a855f7', corppulse:'#f97316', worldpulse:'#ec4899'
+};
+const DS_STATUS_MAP = {
+  ok:    {cls:'dss-posted',  label:'OK'},
+  error: {cls:'dss-creating',label:'ERR'},
+  timeout:{cls:'dss-image', label:'T/O'},
+  never: {cls:'dss-fetched', label:'NEW'},
+};
+const DS_STAGE_LABELS = {
+  fetched:    {cls:'dss-fetched',   label:'Fetched'},
+  creating:   {cls:'dss-creating',  label:'Creating'},
+  captioned:  {cls:'dss-captioned', label:'Captioned'},
+  image_ready:{cls:'dss-image',     label:'Image Ready'},
+  posted:     {cls:'dss-posted',    label:'Posted'},
+};
+
+let dsWorkers       = [];
+let dsActivePage    = 'all';
+let dsActiveSrc     = null;   // display_name of selected source
+let dsArticles      = [];     // articles for current drill-down source
+let dsStageFilter   = 'all';
+
+// ── LOAD ────────────────────────────────────────────────────────────────────
+async function loadDataSources() {
+  try {
+    dsWorkers = await fetch('/api/workers').then(r=>r.json()).catch(()=>[]);
+    dsRenderStats();
+    dsRenderGrid();
+    // If a source was already selected, reload its articles
+    if (dsActiveSrc) dsLoadSourceArticles(dsActiveSrc);
+  } catch(e) {
+    console.error('loadDataSources', e);
+  }
+}
+
+// ── STATS ────────────────────────────────────────────────────────────────────
+function dsRenderStats() {
+  const workers = dsActivePage==='all' ? dsWorkers : dsWorkers.filter(w=>w.page===dsActivePage);
+  const total   = workers.length;
+  const active  = workers.filter(w=>w.last_status==='ok').length;
+  const arts    = workers.reduce((s,w)=>s+(w.real_count||0), 0);
+  const images  = workers.reduce((s,w)=>s+(w.with_image_count||0), 0);
+  const posted  = workers.reduce((s,w)=>s+(w.posted_count||0), 0);
+  document.getElementById('ds-s-total').textContent    = total;
+  document.getElementById('ds-s-active').textContent   = active;
+  document.getElementById('ds-s-articles').textContent = arts;
+  document.getElementById('ds-s-images').textContent   = images;
+  document.getElementById('ds-s-posted').textContent   = posted;
+}
+
+// ── FILTER ──────────────────────────────────────────────────────────────────
+function dsSetPage(page, btn) {
+  dsActivePage = page;
+  dsActiveSrc  = null;
+  document.querySelector('#ds-drill').style.display = 'none';
+  document.querySelectorAll('.ds-filter-btn').forEach(b=>{
+    b.classList.remove('active');
+    b.style.background = b.style.borderColor = b.style.color = '';
+  });
+  btn.classList.add('active');
+  const color = page==='all' ? 'var(--accent)' : DS_PAGE_COLORS[page]||'var(--accent)';
+  btn.style.background = btn.style.borderColor = color;
+  btn.style.color = '#000';
+  dsRenderStats();
+  dsRenderGrid();
+}
+
+// ── GRID ─────────────────────────────────────────────────────────────────────
+function dsRenderGrid() {
+  const workers = dsActivePage==='all' ? dsWorkers : dsWorkers.filter(w=>w.page===dsActivePage);
+  const el = document.getElementById('ds-grid');
+
+  if (!workers.length) {
+    el.innerHTML = '<div class="empty">No sources found. Run the fetcher first.</div>';
+    return;
+  }
+
+  el.innerHTML = workers.map(w => {
+    const color    = DS_PAGE_COLORS[w.page] || '#888';
+    const pageTag  = (w.page||'').replace('pulse','').toUpperCase();
+    const st       = DS_STATUS_MAP[w.last_status] || DS_STATUS_MAP.never;
+    const dotColor = {ok:'var(--green)',error:'var(--red)',timeout:'var(--yellow)',never:'var(--muted)'}[w.last_status]||'var(--muted)';
+    const isSelected = dsActiveSrc === w.display_name;
+    const artCount = w.real_count || 0;
+    const withImg  = w.with_image_count || 0;
+    const imgPct   = artCount > 0 ? Math.round(withImg/artCount*100) : 0;
+    const srcKey = encodeURIComponent(w.display_name);
+    return `<div class="ds-card ${isSelected?'ds-selected':''}"
+                 onclick="dsSelectSource('${w.display_name.replace(/'/g,"\\'")}')"
+                 style="${isSelected?`border-color:${color};box-shadow:0 0 0 1px ${color}44`:''}">
+      <div class="ds-card-top">
+        <div class="dot" style="background:${dotColor};flex-shrink:0;width:7px;height:7px"></div>
+        <div class="ds-card-name" title="${w.display_name}">${w.display_name}</div>
+        <span class="ds-type-badge">${(w.source_type||'rss').toUpperCase()}</span>
+      </div>
+      <div style="font-size:9px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${pageTag}PULSE</div>
+      <div class="ds-card-stats">
+        <div class="ds-card-stat"><b>${artCount}</b> articles</div>
+        <div class="ds-card-stat"><b>${w.posted_count||0}</b> posted</div>
+      </div>
+      <div style="margin:7px 0 2px;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:var(--muted)">Last fetch</span>
+          <span style="color:var(--text);font-weight:600">${timeAgo(w.last_fetched_at)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:var(--muted)">Last news</span>
+          <span style="color:${color};font-weight:600">${timeAgo(w.latest_article_at)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:var(--muted)">Images</span>
+          <span style="color:var(--text)">${imgPct}% (${withImg}/${artCount})</span>
+        </div>
+      </div>
+      <button class="ds-refetch-btn" id="rfbtn-${srcKey}"
+              onclick="event.stopPropagation();dsRefetchSource('${w.display_name.replace(/'/g,"\\'")}',this)"
+              title="Re-fetch this source now">⚡ Refetch</button>
+      <div class="ds-card-bar" style="background:${color}"></div>
+    </div>`;
+  }).join('');
+}
+
+// ── SELECT SOURCE ─────────────────────────────────────────────────────────────
+async function dsSelectSource(displayName) {
+  if (dsActiveSrc === displayName) {
+    dsClearDrill();
+    return;
+  }
+  dsActiveSrc = displayName;
+  dsRenderGrid();
+  dsStageFilter = 'all';
+  dsImageOnly   = false;
+  document.querySelectorAll('.ds-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('.ds-drill-tabs .ds-tab:not(#ds-view-list):not(#ds-view-gallery):not(#ds-view-images)')?.classList.add('active');
+  document.getElementById('ds-view-list')?.classList.add('active');
+  document.getElementById('ds-view-gallery')?.classList.remove('active');
+  document.getElementById('ds-view-images')?.classList.remove('active');
+  await dsLoadSourceArticles(displayName);
+}
+
+async function dsLoadSourceArticles(displayName) {
+  const drill = document.getElementById('ds-drill');
+  const list  = document.getElementById('ds-article-list');
+  drill.style.display = 'block';
+  document.getElementById('ds-drill-title').textContent = displayName;
+  list.innerHTML = '<div class="empty" style="padding:30px">Loading articles…</div>';
+
+  // Worker status badge
+  const w = dsWorkers.find(w=>w.display_name===displayName) || {};
+  const st = DS_STATUS_MAP[w.last_status] || DS_STATUS_MAP.never;
+  const statusEl = document.getElementById('ds-drill-status');
+  statusEl.className = 'ds-status-badge ' + st.cls;
+  statusEl.textContent = st.label;
+  statusEl.style.marginLeft = 'auto';
+
+  // Store current source for fetch-now button
+  document.getElementById('ds-drill-fetch-btn').dataset.source = encodeURIComponent(displayName);
+
+  try {
+    const data = await fetch('/api/source/' + encodeURIComponent(displayName) + '/articles?limit=80')
+      .then(r=>r.json()).catch(()=>({items:[]}));
+    dsArticles = data.items || [];
+    dsRenderPipelineStats();
+    dsRenderArticleList();
+    // Scroll drill-down into view
+    drill.scrollIntoView({behavior:'smooth', block:'nearest'});
+  } catch(e) {
+    list.innerHTML = `<div class="empty">Error loading articles: ${e.message}</div>`;
+  }
+}
+
+function dsFetchSource() {
+  const btn = document.getElementById('ds-drill-fetch-btn');
+  const srcName = decodeURIComponent(btn.dataset.source || '');
+  if (!srcName) return;
+  toast(`⚡ Fetching from "${srcName}"…`, 'var(--accent)');
+  fetch('/api/fetch-source/' + encodeURIComponent(srcName)).catch(()=>{});
+  setTimeout(()=>{ dsLoadSourceArticles(srcName); }, 12000);
+}
+
+async function dsRefetchSource(displayName, btn) {
+  btn.textContent = '⟳ Fetching…';
+  btn.classList.add('spinning');
+  btn.classList.remove('done');
+  try {
+    const resp = await fetch('/api/fetch-source/' + encodeURIComponent(displayName)).then(r=>r.json());
+    const saved = resp.saved ?? '?';
+    const total = resp.total ?? '?';
+    btn.textContent = `✓ +${saved} new`;
+    btn.classList.remove('spinning');
+    btn.classList.add('done');
+    toast(`⚡ ${displayName}: fetched ${total} articles, ${saved} new`, 'var(--green)');
+    // Refresh workers list so last_fetched_at updates on the card
+    setTimeout(async () => {
+      const wData = await fetch('/api/workers').then(r=>r.json()).catch(()=>[]);
+      if (Array.isArray(wData)) { dsWorkers = wData; dsRenderGrid(); }
+      btn.textContent = '⚡ Refetch';
+      btn.classList.remove('done');
+    }, 3000);
+    // If this source is drilled-in, refresh the article list too
+    if (dsActiveSrc === displayName) dsLoadSourceArticles(displayName);
+  } catch(e) {
+    btn.textContent = '⚠ Failed';
+    btn.classList.remove('spinning');
+    setTimeout(()=>{ btn.textContent='⚡ Refetch'; }, 3000);
+  }
+}
+
+function dsClearDrill() {
+  dsActiveSrc = null;
+  document.getElementById('ds-drill').style.display = 'none';
+  dsRenderGrid();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ARTICLE ACTION PANELS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function dsActionPanelHTML(a, page, color) {
+  const stage  = a.pipeline_stage || 'fetched';
+  const esc    = s => (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;').substring(0,200);
+  const id     = a.id;
+  const slides = a.slide_files || [];
+
+  // ── Stage state helpers ───────────────────────────────────────────────────
+  const hasCap    = !!(a.caption);
+  const hasImg    = !!(a.image_file || slides.length);
+  const isPosted  = stage === 'posted';
+
+  const stS = s => {
+    if (s === 'done')     return 'done';
+    if (s === 'active')   return 'active';
+    return 'inactive';
+  };
+
+  // ── Carousel strip HTML ───────────────────────────────────────────────────
+  const SLIDE_LABELS = ['Hero','Story','Pros','Cons','Bottom Line'];
+  let carouselStrip = '';
+  if (slides.length) {
+    const thumbs = slides.map((f, i) => `
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="dsa-slide-thumb" onclick="event.stopPropagation();dsOpenLightbox('/img/${f}','Slide ${i+1}: ${SLIDE_LABELS[i]||''}')">
+          <img src="/img/${f}" onerror="this.parentElement.innerHTML='<span style=font-size:20px>🖼</span>'">
+          <span class="dsa-slide-n">${i+1}</span>
+        </div>
+        <div class="dsa-slide-label">${SLIDE_LABELS[i]||('S'+(i+1))}</div>
+      </div>`).join('');
+    carouselStrip = `<div class="dsa-carousel-strip">${thumbs}</div>`;
+  } else if (a.image_file) {
+    carouselStrip = `<img src="/img/${a.image_file}" class="dsa-img-preview" style="max-height:100px;margin-top:6px"
+      onclick="event.stopPropagation();dsOpenLightbox('/img/${a.image_file}','${esc(a.title)}')">`;
+  }
+
+  // ── Stage 1: Fetch/Content ────────────────────────────────────────────────
+  const s1State = stS('done');  // always done if we have the article
+  const s1Body  = a.article_body
+    ? `<div class="dsa-mini-preview">${(a.article_body||'').substring(0,180)}…</div>`
+    : `<div class="dsa-btn-row">
+        <button class="dsa-btn" onclick="event.stopPropagation();dsArtFetchContent(${id},this)">⬇ Load Full Content</button>
+       </div>
+       <div class="dsa-result" id="dsa-content-${id}"></div>`;
+
+  // ── Stage 2: Caption ─────────────────────────────────────────────────────
+  const s2State = stS(hasCap ? 'done' : 'active');
+  const s2Body  = hasCap
+    ? `<div class="dsa-mini-preview">${esc(a.caption)}</div>
+       <div class="dsa-btn-row">
+         <button class="dsa-btn" onclick="event.stopPropagation();dsArtGenCaption(${id},this,'${page}')">↺ Regenerate</button>
+       </div>
+       <div class="dsa-result" id="dsa-caption-${id}"></div>`
+    : `<div class="dsa-btn-row">
+         <button class="dsa-btn dsa-btn-mark" onclick="event.stopPropagation();dsArtGenCaption(${id},this,'${page}')">✦ Generate Caption</button>
+       </div>
+       <div class="dsa-result" id="dsa-caption-${id}"></div>`;
+
+  // ── Stage 3: Carousel Images ──────────────────────────────────────────────
+  const s3State = stS(hasImg ? 'done' : (hasCap ? 'active' : 'inactive'));
+  const slideCount = slides.length || (a.image_file ? 1 : 0);
+  const s3Body  = hasImg
+    ? `<div style="font-size:10px;color:var(--green);margin-bottom:4px">✓ ${slideCount} slide${slideCount!==1?'s':''} ready</div>
+       ${carouselStrip}
+       <div class="dsa-btn-row" style="margin-top:8px">
+         <button class="dsa-btn" onclick="event.stopPropagation();dsArtGenImage(${id},this,'${page}')">↺ Regenerate Carousel</button>
+       </div>
+       <div class="dsa-result" id="dsa-image-${id}"></div>`
+    : `<div class="dsa-btn-row">
+         <button class="dsa-btn dsa-btn-mark" ${!hasCap?'disabled title="Generate caption first"':''} onclick="event.stopPropagation();dsArtGenImage(${id},this,'${page}')">🎨 Generate Carousel (5 slides)</button>
+       </div>
+       <div class="dsa-result" id="dsa-image-${id}"></div>`;
+
+  // ── Stage 4: Post ─────────────────────────────────────────────────────────
+  const s4State = stS(isPosted ? 'done' : (hasImg ? 'active' : 'inactive'));
+  let s4Body;
+  if (isPosted) {
+    const postedAt = timeAgo(a.post_published_at || a.posted_at);
+    s4Body = `<div style="color:var(--green);font-size:12px;margin-bottom:6px">✅ Posted ${postedAt}</div>
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:6px">
+        <span>❤️ <b>${a.likes||0}</b></span>
+        <span>💬 <b>${a.comments||0}</b></span>
+        ${a.instagram_post_id?`<span style="font-size:9px">ID: ${a.instagram_post_id}</span>`:''}
+      </div>
+      <div class="dsa-confirm-row" id="dsa-repost-confirm-${id}">
+        <button class="dsa-btn dsa-btn-warn" onclick="event.stopPropagation();dsArtShowRepostConfirm(${id})">🔄 Repost Carousel</button>
+      </div>
+      <div class="dsa-result" id="dsa-post-${id}"></div>`;
+  } else {
+    s4Body = `<div class="dsa-btn-row">
+        <button class="dsa-btn dsa-btn-post" ${!hasImg?'disabled title="Generate carousel first"':''} onclick="event.stopPropagation();dsArtPost(${id},this,'${page}',false)">📸 Post Carousel to Instagram</button>
+        <button class="dsa-btn dsa-btn-mark" ${!hasImg?'disabled title="Generate carousel first"':''} onclick="event.stopPropagation();dsArtMarkPosted(${id},this)">✓ Mark as Posted</button>
+      </div>
+      <div class="dsa-result" id="dsa-post-${id}"></div>`;
+  }
+
+  return `<div class="dsa-pipeline">
+    <div class="dsa-stage ${s1State}">
+      <div class="dsa-stage-icon">📰</div>
+      <div class="dsa-stage-body">
+        <div class="dsa-stage-title">${a.article_body ? '✓ Article Content' : 'Article Content'}</div>
+        ${s1Body}
+      </div>
+    </div>
+    <div class="dsa-stage ${s2State}">
+      <div class="dsa-stage-icon">📝</div>
+      <div class="dsa-stage-body">
+        <div class="dsa-stage-title">${hasCap ? '✓ Caption & Analysis' : 'Generate Caption & Analysis'}</div>
+        ${s2Body}
+      </div>
+    </div>
+    <div class="dsa-stage ${s3State}">
+      <div class="dsa-stage-icon">🎨</div>
+      <div class="dsa-stage-body">
+        <div class="dsa-stage-title">${hasImg ? '✓ Carousel Slides' : 'Generate Carousel (5 Slides)'}</div>
+        ${s3Body}
+      </div>
+    </div>
+    <div class="dsa-stage ${s4State}">
+      <div class="dsa-stage-icon">📸</div>
+      <div class="dsa-stage-body">
+        <div class="dsa-stage-title">${isPosted ? '✓ Posted to Instagram' : 'Post to Instagram'}</div>
+        ${s4Body}
+      </div>
+    </div>
+  </div>`;
+}
+
+function dsToggleActionPanel(id, btn) {
+  const panel   = document.getElementById(`dsa-${id}`);
+  const article = dsArticles.find(a => a.id === id);
+  if (!panel || !article) return;
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    panel.style.display = 'none';
+    btn.innerHTML = btn.innerHTML.replace('▴','▾');
+  } else {
+    const page  = (dsWorkers.find(w=>w.display_name===dsActiveSrc)||{}).page||'finpulse';
+    const color = DS_PAGE_COLORS[page] || '#888';
+    panel.innerHTML = dsActionPanelHTML(article, page, color);
+    panel.style.display = 'block';
+    btn.innerHTML = btn.innerHTML.replace('▾','▴');
+  }
+}
+
+// ── ACTION: Fetch Content ─────────────────────────────────────────────────────
+async function dsArtFetchContent(id, btn) {
+  btn.textContent = '⟳ Loading…'; btn.disabled = true;
+  const res = document.getElementById(`dsa-content-${id}`);
+  try {
+    const data = await fetch(`/api/article/${id}/content`).then(r=>r.json());
+    const body = data.article_body || data.body || '';
+    if (body) {
+      btn.replaceWith(Object.assign(document.createElement('div'), {className:'dsa-mini-preview', textContent: body.substring(0,250)+'…'}));
+      const idx = dsArticles.findIndex(a=>a.id===id);
+      if (idx>=0) dsArticles[idx].article_body = body;
+    } else {
+      btn.textContent = '⬇ Load Content'; btn.disabled = false;
+      res.className = 'dsa-result err'; res.textContent = data.error || 'Could not extract article text (site may require JavaScript).';
+    }
+  } catch(e) {
+    btn.textContent = '⬇ Load Content'; btn.disabled = false;
+    res.className = 'dsa-result err'; res.textContent = `Network error: ${e.message}`;
+  }
+}
+
+// ── ACTION: Generate Caption ──────────────────────────────────────────────────
+async function dsArtGenCaption(id, btn, page) {
+  const prevText = btn.textContent;
+  btn.textContent = '⟳ Generating…'; btn.disabled = true;
+  const res = document.getElementById(`dsa-caption-${id}`);
+  if (res) { res.className = 'dsa-result'; res.textContent = 'Calling Groq AI…'; }
+  try {
+    const data = await fetch(`/api/article/${id}/generate-caption`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    btn.textContent = `✓ Done (${data.backend})`; btn.classList.add('success');
+    if (res) {
+      res.className = 'dsa-result ok';
+      res.textContent = `${data.caption.length} chars via ${data.backend}: "${(data.caption||'').substring(0,100)}…`;
+    }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].caption = data.caption; dsArticles[idx].pipeline_stage = 'captioned'; }
+    dsUpdateArticleBadge(id, 'captioned');
+    setTimeout(()=>{ const p = document.getElementById(`dsa-${id}`); if(p&&p.style.display!=='none') dsRefreshActionPanel(id); }, 1200);
+  } catch(e) {
+    btn.textContent = prevText; btn.disabled = false; btn.classList.add('error');
+    if (res) { res.className = 'dsa-result err'; res.innerHTML = `<b>Caption failed:</b> ${e.message}<br><small>Check .env GROQ_API_KEY or use template fallback</small>`; }
+  }
+}
+
+// ── ACTION: Generate Image / Carousel ────────────────────────────────────────
+async function dsArtGenImage(id, btn, page) {
+  const prevText = btn.textContent;
+  btn.textContent = '⟳ Generating carousel…'; btn.disabled = true;
+  const res = document.getElementById(`dsa-image-${id}`);
+  if (res) { res.className = 'dsa-result'; res.textContent = 'Building 5 slides…'; }
+  try {
+    const data = await fetch(`/api/article/${id}/generate-image`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    btn.textContent = `✓ ${data.slide_count||1} slides ready`; btn.classList.add('success');
+    if (res) { res.className = 'dsa-result ok'; res.textContent = `✓ ${data.slide_count||1} carousel slides generated`; }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) {
+      dsArticles[idx].image_file = data.image_file;
+      dsArticles[idx].pipeline_stage = 'image_ready';
+      // Build slide_files from slide_count — server returns image_file for slide 1
+      // Full refresh will pick up all slides
+    }
+    dsUpdateArticleBadge(id, 'image_ready');
+    // Refresh the panel after a beat so slide thumbnails appear
+    // (reload article data first to get slide_files)
+    setTimeout(async () => {
+      try {
+        const fresh = await fetch(`/api/source/${encodeURIComponent(dsActiveSrc)}/articles?limit=80`).then(r=>r.json());
+        if (fresh.items) {
+          dsArticles = fresh.items;
+          const p = document.getElementById(`dsa-${id}`);
+          if (p && p.style.display !== 'none') dsRefreshActionPanel(id);
+        }
+      } catch(e) {}
+    }, 1200);
+  } catch(e) {
+    btn.textContent = prevText; btn.disabled = false; btn.classList.add('error');
+    if (res) { res.className = 'dsa-result err'; res.textContent = `Error: ${e.message}`; }
+  }
+}
+
+// ── ACTION: Post to Instagram ─────────────────────────────────────────────────
+async function dsArtPost(id, btn, page, repost) {
+  btn.textContent = '⟳ Posting…'; btn.disabled = true;
+  const res = document.getElementById(`dsa-post-${id}`);
+  if (res) res.className = 'dsa-result'; res && (res.textContent = '');
+  try {
+    const data = await fetch(`/api/article/${id}/post`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({repost: !!repost})
+    }).then(r=>r.json());
+
+    if (data.already_posted && !repost) {
+      // Show inline confirmation
+      btn.textContent = '📸 Post Now'; btn.disabled = false;
+      if (res) {
+        res.className = 'dsa-result';
+        res.innerHTML = `<div class="dsa-confirm-row"><span class="dsa-confirm-msg">⚠ Already posted. Repost?</span>
+          <button class="dsa-btn dsa-btn-warn" onclick="event.stopPropagation();dsArtPost(${id},this,'${page}',true)">Yes, Repost</button>
+          <button class="dsa-btn" onclick="event.stopPropagation();this.closest('.dsa-result').innerHTML=''">Cancel</button></div>`;
+      }
+      return;
+    }
+    if (data.error) throw new Error(data.error);
+    btn.textContent = '✅ Posted!'; btn.classList.add('success');
+    if (res) { res.className = 'dsa-result ok'; res.textContent = `✅ Posted! IG Post ID: ${data.instagram_post_id||'—'}`; }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].pipeline_stage = 'posted'; dsArticles[idx].is_posted = 1; }
+    dsUpdateArticleBadge(id, 'posted');
+    toast('📸 Posted to Instagram!', 'var(--green)');
+    setTimeout(()=>{ const p = document.getElementById(`dsa-${id}`); if(p&&p.style.display!=='none') dsRefreshActionPanel(id); }, 2000);
+  } catch(e) {
+    btn.textContent = '📸 Retry'; btn.disabled = false; btn.classList.add('error');
+    if (res) { res.className = 'dsa-result err'; res.textContent = `Error: ${e.message}`; }
+  }
+}
+
+// ── ACTION: Mark as Posted ────────────────────────────────────────────────────
+async function dsArtMarkPosted(id, btn) {
+  btn.textContent = '⟳ Marking…'; btn.disabled = true;
+  try {
+    const data = await fetch(`/api/article/${id}/mark-posted`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    btn.textContent = '✅ Marked'; btn.classList.add('success');
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].pipeline_stage = 'posted'; dsArticles[idx].is_posted = 1; }
+    dsUpdateArticleBadge(id, 'posted');
+    setTimeout(()=>{ const p = document.getElementById(`dsa-${id}`); if(p&&p.style.display!=='none') dsRefreshActionPanel(id); }, 1500);
+  } catch(e) {
+    btn.textContent = '✓ Already Posted'; btn.disabled = false;
+    alert(`Error: ${e.message}`);
+  }
+}
+
+// ── ACTION: Repost Confirmation ───────────────────────────────────────────────
+function dsArtShowRepostConfirm(id) {
+  const row = document.getElementById(`dsa-repost-confirm-${id}`);
+  if (!row) return;
+  const page = (dsWorkers.find(w=>w.display_name===dsActiveSrc)||{}).page||'finpulse';
+  row.innerHTML = `<span class="dsa-confirm-msg">Sure? This will post again.</span>
+    <button class="dsa-btn dsa-btn-warn" onclick="event.stopPropagation();dsArtPost(${id},this,'${page}',true)">Yes, Repost</button>
+    <button class="dsa-btn" onclick="event.stopPropagation();dsArtRepostCancel(${id})">Cancel</button>`;
+}
+function dsArtRepostCancel(id) {
+  const row = document.getElementById(`dsa-repost-confirm-${id}`);
+  if (!row) return;
+  row.innerHTML = `<button class="dsa-btn dsa-btn-warn" onclick="event.stopPropagation();dsArtShowRepostConfirm(${id})">🔄 Repost to Instagram</button>`;
+}
+
+// ── HELPERS: update badge + refresh panel ────────────────────────────────────
+function dsUpdateArticleBadge(id, newStage) {
+  const btn = document.querySelector(`#ds-art-${id} .dsa-toggle`);
+  if (!btn) return;
+  const stMeta = DS_STAGE_LABELS[newStage] || DS_STAGE_LABELS.fetched;
+  btn.className = `ds-status-badge ${stMeta.cls} dsa-toggle`;
+  btn.innerHTML = stMeta.label + ' ▴';
+  dsRenderPipelineStats();
+}
+
+function dsRefreshActionPanel(id) {
+  const panel   = document.getElementById(`dsa-${id}`);
+  const article = dsArticles.find(a=>a.id===id);
+  if (!panel || !article) return;
+  const page  = (dsWorkers.find(w=>w.display_name===dsActiveSrc)||{}).page||'finpulse';
+  const color = DS_PAGE_COLORS[page] || '#888';
+  panel.innerHTML = dsActionPanelHTML(article, page, color);
+}
+
+// ── PIPELINE STATS ────────────────────────────────────────────────────────────
+function dsRenderPipelineStats() {
+  const counts = {fetched:0, captioned:0, image_ready:0, posted:0, with_image:0};
+  for (const a of dsArticles) {
+    const stage = a.pipeline_stage || 'fetched';
+    if (counts[stage] !== undefined) counts[stage]++;
+    if (a.image_url) counts.with_image++;
+  }
+  document.getElementById('dsp-fetched').textContent   = dsArticles.length;
+  document.getElementById('dsp-captioned').textContent = counts.captioned + counts.image_ready + counts.posted;
+  document.getElementById('dsp-image').textContent     = counts.image_ready + counts.posted;
+  document.getElementById('dsp-posted').textContent    = counts.posted;
+  document.getElementById('dsp-with-image').textContent = counts.with_image;
+}
+
+// ── VIEW TOGGLE (list / gallery) ─────────────────────────────────────────────
+let dsView = 'list';
+
+function dsSetView(view, btn) {
+  dsView = view;
+  document.getElementById('ds-view-list').classList.toggle('active', view==='list');
+  document.getElementById('ds-view-gallery').classList.toggle('active', view==='gallery');
+  dsRenderArticleList();
+}
+
+// ── STAGE FILTER ──────────────────────────────────────────────────────────────
+function dsSetStageFilter(stage, btn) {
+  dsStageFilter = stage;
+  document.querySelectorAll('.ds-drill-tabs .ds-tab:not(#ds-view-list):not(#ds-view-gallery):not(#ds-view-images)')
+    .forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  dsRenderArticleList();
+}
+
+// ── IMAGE-ONLY TOGGLE ─────────────────────────────────────────────────────────
+let dsImageOnly = false;
+
+function dsToggleImageOnly(btn) {
+  dsImageOnly = !dsImageOnly;
+  btn.classList.toggle('active', dsImageOnly);
+  // Auto-switch to gallery view when filtering for images
+  if (dsImageOnly && dsView !== 'gallery') dsSetView('gallery', document.getElementById('ds-view-gallery'));
+  else dsRenderArticleList();
+}
+
+// ── ARTICLE LIST ──────────────────────────────────────────────────────────────
+function dsRenderArticleList() {
+  let arts = dsArticles;
+  if (dsStageFilter !== 'all') arts = arts.filter(a=>a.pipeline_stage===dsStageFilter);
+  if (dsImageOnly) arts = arts.filter(a => !!(a.image_url || (a.image_urls && a.image_urls.length)));
+
+  const el = document.getElementById('ds-article-list');
+
+  if (!arts.length) {
+    el.innerHTML = '<div class="empty" style="padding:30px">No articles match this filter</div>';
+    return;
+  }
+
+  if (dsView === 'gallery') {
+    dsRenderGallery(arts, el);
+    return;
+  }
+
+  const page  = dsActiveSrc ? (dsWorkers.find(w=>w.display_name===dsActiveSrc)||{}).page||'finpulse' : 'finpulse';
+  const color = DS_PAGE_COLORS[page] || '#888';
+
+  el.innerHTML = arts.map(a=>{
+    const score    = Math.round(a.score||0);
+    const scoreBar = `<div class="ds-art-score-bar"><div class="ds-art-score-fill" style="width:${score}%;background:${color}"></div></div>`;
+    const stage    = a.pipeline_stage || 'fetched';
+    const stMeta   = DS_STAGE_LABELS[stage] || DS_STAGE_LABELS.fetched;
+    const badge    = `<button class="ds-status-badge ${stMeta.cls} dsa-toggle" title="Click for actions" onclick="event.stopPropagation();dsToggleActionPanel(${a.id},this)">${stMeta.label} ▾</button>`;
+    const pageTag  = `<span class="post-page-tag ${tagClass(a.page)}" style="font-size:9px">${(a.page||'').replace('pulse','').toUpperCase()}</span>`;
+
+    // Thumbnail: prefer image_url (from RSS/og:image), fallback to generated post image
+    const imgSrc = a.image_url || (a.image_file ? `/img/${a.image_file}` : '');
+    const thumbHtml = imgSrc
+      ? `<img src="${imgSrc}" alt="" onerror="this.parentElement.innerHTML='🖼'" loading="lazy" style="cursor:zoom-in" onclick="dsOpenLightbox('${imgSrc.replace(/'/g,"\\'")}','${(a.title||'').replace(/'/g,"\\'").substring(0,80)}')">`
+      : `🖼`;
+
+    // Right column: score + likes if posted
+    let rightHtml = `<div class="ds-art-score-num" style="color:${color}">${score}</div>
+      <div style="font-size:9px;color:var(--muted)">pts</div>`;
+    if (stage==='posted' && a.show_likes) {
+      rightHtml += `<div class="ds-likes">❤️ ${a.likes||0}</div>
+        <div class="ds-likes">💬 ${a.comments||0}</div>`;
+    }
+    rightHtml += `<button class="ds-art-content-btn" onclick="event.stopPropagation();dsOpenArticleModal(dsArticles.find(x=>x.id===${a.id}))" title="Open article detail">View →</button>`;
+
+    const titleHtml = a.url
+      ? `<a href="${a.url}" target="_blank" rel="noopener">${a.title||''}</a>`
+      : (a.title||'');
+
+    return `<div class="ds-art-wrap" id="dsaw-${a.id}">
+      <div class="ds-art-row" id="ds-art-${a.id}" style="cursor:pointer" onclick="dsOpenArticleModal(dsArticles.find(x=>x.id===${a.id}))" title="Click to open full article detail">
+        <div class="ds-art-thumb" onclick="event.stopPropagation()">${thumbHtml}</div>
+        <div class="ds-art-body">
+          <div class="ds-art-title">${a.url ? `<a href="${a.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${a.title||''}</a>` : (a.title||'')}</div>
+          ${a.summary ? `<div class="ds-art-summary">${a.summary}</div>` : ''}
+          ${scoreBar}
+          <div class="ds-art-meta">
+            <span style="font-size:10px;font-weight:700;color:${color}">${a.source_name||''}</span>
+            ${pageTag}
+            ${badge}
+            <span style="font-size:10px;color:var(--muted)">${timeAgo(a.published_at||a.fetched_at)}</span>
+          </div>
+        </div>
+        <div class="ds-art-right">${rightHtml}</div>
+      </div>
+      <div class="ds-action-panel" id="dsa-${a.id}" style="display:none"></div>
+    </div>`;
+  }).join('');
+}
+
+// ── GALLERY VIEW ──────────────────────────────────────────────────────────────
+function dsRenderGallery(arts, el) {
+  const page  = dsActiveSrc ? (dsWorkers.find(w=>w.display_name===dsActiveSrc)||{}).page||'finpulse' : 'finpulse';
+  const color = DS_PAGE_COLORS[page] || '#888';
+
+  el.innerHTML = `<div class="ds-gallery">${arts.map(a=>{
+    const score  = Math.round(a.score||0);
+    const imgSrc = a.image_url || (a.image_file ? `/img/${a.image_file}` : '');
+    const stage  = a.pipeline_stage || 'fetched';
+    const stMeta = DS_STAGE_LABELS[stage] || DS_STAGE_LABELS.fetched;
+
+    const imgHtml = imgSrc
+      ? `<div class="ds-gal-img"><img src="${imgSrc}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='🖼'"></div>`
+      : `<div class="ds-gal-img">🖼</div>`;
+    const noImgBadge = imgSrc ? '' : `<div class="ds-no-image-badge">No image</div>`;
+
+    return `<div class="ds-gal-card" onclick="dsGalCardClick(${a.id},'${(imgSrc||'').replace(/'/g,"\\'")}','${(a.title||'').replace(/'/g,"\\'").substring(0,80)}','${(a.url||'').replace(/'/g,"\\'")}')">
+      ${imgHtml}
+      ${noImgBadge}
+      <div class="ds-gal-info">
+        <div class="ds-gal-title">${a.title||''}</div>
+        <div class="ds-gal-foot">
+          <span class="ds-gal-score" style="color:${color}">${score}</span>
+          <span class="ds-status-badge ${stMeta.cls}">${stMeta.label}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function dsGalCardClick(id, imgSrc, title, url) {
+  if (imgSrc) {
+    dsOpenLightbox(imgSrc, title);
+  } else if (url) {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+function dsOpenLightbox(imgSrc, caption) {
+  const lb  = document.getElementById('ds-lightbox');
+  const img = document.getElementById('ds-lightbox-img');
+  const cap = document.getElementById('ds-lightbox-caption');
+  img.src = imgSrc;
+  cap.textContent = caption || '';
+  lb.classList.add('open');
+  document.addEventListener('keydown', dsLightboxKey, {once:true});
+}
+
+function dsCloseLightbox() {
+  document.getElementById('ds-lightbox').classList.remove('open');
+}
+
+function dsLightboxKey(e) {
+  if (e.key === 'Escape') dsCloseLightbox();
+}
+
+// ── FULL CONTENT LOADER ───────────────────────────────────────────────────────
+async function dsLoadFullContent(articleId, btn) {
+  btn.textContent = '⟳';
+  btn.disabled = true;
+  try {
+    const data = await fetch(`/api/article/${articleId}/content`).then(r=>r.json());
+    const row  = document.getElementById(`ds-art-${articleId}`);
+    if (!row) return;
+
+    // Update thumbnail if we got a better image
+    const newImg = data.og_image || (Array.isArray(data.image_urls) && data.image_urls[0]);
+    if (newImg) {
+      const thumb = row.querySelector('.ds-art-thumb');
+      if (thumb) thumb.innerHTML = `<img src="${newImg}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='🖼'">`;
+    }
+
+    // Show article body in a modal-like expansion
+    const body  = row.querySelector('.ds-art-body');
+    const existing = body.querySelector('.ds-art-expanded');
+    if (existing) {
+      existing.remove();
+      btn.textContent = '📄';
+      btn.disabled = false;
+      return;
+    }
+    if (data.article_body || data.body) {
+      const text = (data.article_body || data.body || '').substring(0, 800);
+      const exp = document.createElement('div');
+      exp.className = 'ds-art-expanded';
+      exp.style.cssText = 'font-size:11px;color:var(--muted);line-height:1.6;margin-top:7px;padding:8px 10px;background:var(--s2);border-radius:6px;border:1px solid var(--border);max-height:180px;overflow-y:auto';
+      exp.textContent = text + (text.length >= 800 ? '…' : '');
+      body.appendChild(exp);
+    }
+  } catch(e) {
+    toast('Content fetch failed', 'var(--red)');
+  }
+  btn.textContent = '📄';
+  btn.disabled = false;
+}
+
+
+// ══════════════════════════════════════════
+// ARTICLE DETAIL MODAL
+// ══════════════════════════════════════════
+
+const AM_IG_HANDLES = {
+  finpulse:'finpulse.daily', techpulse:'techpulse.daily',
+  corppulse:'corppulse.daily', worldpulse:'worldpulse.daily',
+};
+
+let amCurrentArticle = null;
+
+function dsOpenArticleModal(article) {
+  amCurrentArticle = article;
+  const page  = article.page || 'finpulse';
+  const color = DS_PAGE_COLORS[page] || '#888';
+
+  document.getElementById('am-topbar').style.background = color;
+  document.getElementById('am-title').textContent       = article.title || 'Untitled';
+  document.getElementById('am-body').innerHTML          = amRenderBody(article, color);
+  document.getElementById('am-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  document.addEventListener('keydown', amEscHandler, {once:true});
+
+  // If no body yet, trigger a background load so 📄 section populates
+  if (!article.article_body && article.url) {
+    amFetchBodyInBackground(article.id);
+  }
+}
+
+function dsCloseArticleModal() {
+  document.getElementById('am-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  amCurrentArticle = null;
+}
+
+function amHandleBackdropClick(e) {
+  if (e.target === document.getElementById('am-backdrop')) dsCloseArticleModal();
+}
+
+function amEscHandler(e) {
+  if (e.key === 'Escape') dsCloseArticleModal();
+  else document.addEventListener('keydown', amEscHandler, {once:true});
+}
+
+// ── RENDER MODAL BODY ─────────────────────────────────────────────────────────
+function amRenderBody(a, color) {
+  const score    = Math.round(a.score || 0);
+  const imgSrc   = a.image_url || (a.image_file ? `/img/${a.image_file}` : '');
+  const page     = a.page || 'finpulse';
+  const handle   = AM_IG_HANDLES[page] || page;
+  const pageLabel = page.replace('pulse','').toUpperCase() + 'PULSE';
+
+  // ── SECTION 1: Article info ──────────────────────────────────────────────
+  const infoSection = `
+  <div class="am-section">
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      ${imgSrc ? `<div style="flex-shrink:0;width:140px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:zoom-in" onclick="dsOpenLightbox('${imgSrc.replace(/'/g,"\\'")}','')">
+        <img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'">
+      </div>` : `<div style="flex-shrink:0;width:140px;height:90px;border-radius:8px;background:var(--s2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:28px">🖼</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="am-meta-grid">
+          <span class="am-meta-chip"><b>${a.source_name||'—'}</b></span>
+          <span class="am-meta-chip" style="color:${color};border-color:${color}44"><b>${pageLabel}</b></span>
+          ${a.category ? `<span class="am-meta-chip">${a.category}</span>` : ''}
+          <span class="am-meta-chip">${timeAgo(a.published_at||a.fetched_at)}</span>
+          <span class="am-meta-chip"><b style="color:${color}">${score} pts</b></span>
+        </div>
+        <div class="am-score-bar" style="margin-top:10px;max-width:260px">
+          <div class="am-score-fill" style="width:${score}%;background:${color}"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          ${a.url ? `<a href="${a.url}" target="_blank" rel="noopener" style="font-size:11px;padding:4px 10px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:var(--muted);text-decoration:none;font-weight:600" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">🔗 Read Article</a>` : ''}
+          <button onclick="amLoadBody(${a.id},this)" style="font-size:11px;padding:4px 10px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-weight:600" id="am-load-body-btn">📄 Load Full Article</button>
+        </div>
+      </div>
+    </div>
+    ${a.summary ? `<div style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.6;padding:10px 12px;background:var(--s2);border-radius:7px;border-left:3px solid ${color}">${a.summary}</div>` : ''}
+  </div>`;
+
+  // ── SECTION 2: Article body ──────────────────────────────────────────────
+  const bodySection = `
+  <div class="am-section" id="am-body-section">
+    <div class="am-section-title">📰 Article Content</div>
+    ${a.article_body
+      ? `<div class="am-article-body">${a.article_body}</div>`
+      : `<div class="am-empty-box" id="am-body-placeholder">Click "Load Full Article" above to fetch the article text</div>`}
+  </div>`;
+
+  // ── SECTION 3: Pipeline track ────────────────────────────────────────────
+  const stages = amGetPipelineStages(a, color);
+  const pipelineHtml = stages.map((s,i) => `
+    <div class="am-stage">
+      <div class="am-stage-connector ${s.done?'done':''}" style="${s.done?`color:${color}`:''}"></div>
+      <div class="am-stage-dot ${s.done?'done':''}" style="${s.done?`color:${color};box-shadow:0 0 0 1px ${color}44`:''}">
+        ${s.done ? `<span style="font-size:13px">✓</span>` : `<span style="font-size:11px;color:var(--muted)">${i+1}</span>`}
+      </div>
+      <div class="am-stage-label" style="${s.done?`color:${color}`:''}"> ${s.label}</div>
+      <div class="am-stage-detail">${s.detail}</div>
+      ${s.action ? `<div class="am-stage-action">${s.action}</div>` : ''}
+    </div>`).join('');
+
+  const pipelineSection = `
+  <div class="am-section">
+    <div class="am-section-title">⚡ Pipeline Status</div>
+    <div class="am-pipeline">${pipelineHtml}</div>
+  </div>`;
+
+  // ── SECTION 4: Caption ───────────────────────────────────────────────────
+  const captionSection = `
+  <div class="am-section">
+    <div class="am-section-title">✍️ Generated Caption</div>
+    ${a.caption
+      ? `<div class="am-caption-box">${a.caption}${a.hashtags ? '\n\n' + a.hashtags : ''}</div>`
+      : `<div class="am-empty-box">Caption not generated yet</div>`}
+  </div>`;
+
+  // ── SECTION 5: Instagram Preview ────────────────────────────────────────
+  const postImgSrc = a.image_file ? `/img/${a.image_file}` : imgSrc;
+  const igSection = `
+  <div class="am-section">
+    <div class="am-section-title">📱 Instagram Preview</div>
+    <div class="am-ig-mock">
+      <div class="am-ig-header">
+        <div class="am-ig-avatar">${handle.substring(0,2).toUpperCase()}</div>
+        <div class="am-ig-handle">@${handle}</div>
+        <div class="am-ig-dots">···</div>
+      </div>
+      ${postImgSrc
+        ? `<div class="am-ig-post-img"><img src="${postImgSrc}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.innerHTML='🖼'"></div>`
+        : `<div class="am-ig-post-img" style="background:var(--s2);min-height:280px">🖼<div style="font-size:12px;color:var(--muted);margin-top:8px">Post image not generated</div></div>`}
+      <div class="am-ig-actions">
+        <span>🤍</span><span>💬</span><span>✈️</span>
+        <span style="margin-left:auto">🔖</span>
+      </div>
+      ${(a.post_status==='posted' && (a.likes||0) > 0)
+        ? `<div class="am-ig-likes">${(a.likes||0).toLocaleString()} likes</div>`
+        : `<div class="am-ig-likes" style="color:#999">— likes</div>`}
+      ${a.caption
+        ? `<div class="am-ig-caption"><strong>@${handle}</strong> ${a.caption.substring(0,220)}${a.caption.length>220?'…':''}</div>`
+        : `<div class="am-ig-caption" style="color:#999"><strong>@${handle}</strong> Caption will appear here…</div>`}
+      <div class="am-ig-time">${a.post_status==='posted' ? timeAgo(a.post_published_at||a.posted_at) : 'Not posted yet'}</div>
+    </div>
+  </div>`;
+
+  // ── SECTION 6: Analytics ─────────────────────────────────────────────────
+  let analyticsSection = '';
+  if (a.post_status === 'posted') {
+    analyticsSection = `
+    <div class="am-section">
+      <div class="am-section-title">📊 Post Analytics</div>
+      ${a.show_likes
+        ? `<div class="am-analytics-grid">
+            <div class="am-analytics-card">
+              <div class="am-analytics-val" style="color:var(--red)">❤️ ${(a.likes||0).toLocaleString()}</div>
+              <div class="am-analytics-lbl">Likes</div>
+            </div>
+            <div class="am-analytics-card">
+              <div class="am-analytics-val" style="color:var(--accent)">💬 ${(a.comments||0).toLocaleString()}</div>
+              <div class="am-analytics-lbl">Comments</div>
+            </div>
+            <div class="am-analytics-card">
+              <div class="am-analytics-val" style="color:var(--green)">
+                ${a.instagram_post_id ? `<a href="https://instagram.com/p/${a.instagram_post_id}" target="_blank" rel="noopener" style="color:var(--green);font-size:11px;text-decoration:none">🔗 View Post</a>` : '—'}
+              </div>
+              <div class="am-analytics-lbl">Instagram</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+            Posted ${timeAgo(a.post_published_at||a.posted_at)}
+            ${a.instagram_post_id ? ` · Post ID: ${a.instagram_post_id}` : ''}
+          </div>`
+        : `<div class="am-empty-box">Analytics available after 24 hours · posted ${timeAgo(a.post_published_at||a.posted_at)}</div>`}
+    </div>`;
+  } else {
+    analyticsSection = `
+    <div class="am-section">
+      <div class="am-section-title">📊 Post Analytics</div>
+      <div class="am-empty-box">Analytics will appear here once the article is posted to Instagram</div>
+    </div>`;
+  }
+
+  return infoSection + bodySection + pipelineSection + captionSection + igSection + analyticsSection;
+}
+
+// ── PIPELINE STAGES ───────────────────────────────────────────────────────────
+function amGetPipelineStages(a, color) {
+  const score    = Math.round(a.score || 0);
+  const id       = a.id;
+  const page     = a.page || 'finpulse';
+  const hasCaption = !!(a.caption);
+  const hasImage   = !!(a.image_file || a.image_path);
+  const isPosted   = a.post_status === 'posted' || a.is_posted == 1;
+
+  return [
+    {
+      label:  'Fetched',
+      done:   true,
+      detail: timeAgo(a.fetched_at),
+      action: null,
+    },
+    {
+      label:  'Analyzed',
+      done:   score > 0,
+      detail: score > 0 ? `${score} pts` : 'Pending',
+      action: null,
+    },
+    {
+      label:  'Verified',
+      done:   !a.is_duplicate,
+      detail: a.is_duplicate ? 'Duplicate' : 'Unique',
+      action: null,
+    },
+    {
+      label:  'Caption',
+      done:   hasCaption,
+      detail: hasCaption ? `${a.caption.length} chars` : 'Not generated',
+      action: !hasCaption
+        ? `<button class="am-stage-btn" id="am-act-caption-${id}"
+               onclick="amActGenCaption(${id},'${page}',this)">✦ Generate</button>
+           <div class="am-stage-err" id="am-act-caption-err-${id}"></div>`
+        : null,
+    },
+    {
+      label:  'Post Image',
+      done:   hasImage,
+      detail: hasImage ? 'Ready' : (hasCaption ? 'Click Generate' : 'Need caption first'),
+      action: !hasImage && hasCaption
+        ? `<button class="am-stage-btn" id="am-act-image-${id}"
+               onclick="amActGenImage(${id},'${page}',this)">🎨 Generate</button>
+           <div class="am-stage-err" id="am-act-image-err-${id}"></div>`
+        : (!hasImage && !hasCaption
+            ? `<div style="font-size:9px;color:var(--muted);text-align:center">Generate caption first</div>`
+            : null),
+    },
+    {
+      label:  'Posted',
+      done:   isPosted,
+      detail: isPosted ? timeAgo(a.post_published_at || a.posted_at) : (hasImage ? 'Ready to post' : 'Pending'),
+      action: !isPosted && hasImage
+        ? `<button class="am-stage-btn am-btn-post" id="am-act-post-${id}"
+               onclick="amActPost(${id},'${page}',this,false)">📸 Post</button>
+           <button class="am-stage-btn am-btn-mark" style="margin-top:2px"
+               onclick="amActMarkPosted(${id},this)">✓ Mark</button>
+           <div class="am-stage-err" id="am-act-post-err-${id}"></div>`
+        : (isPosted
+            ? `<a href="${a.instagram_post_id ? `https://instagram.com/p/${a.instagram_post_id}` : '#'}"
+                 target="_blank" style="font-size:9px;color:var(--green);text-decoration:none;font-weight:700">
+                 ${a.instagram_post_id ? '🔗 View' : ''}</a>
+               <button class="am-stage-btn" style="margin-top:2px;font-size:8px"
+                   onclick="amActPost(${id},'${page}',this,true)">↩ Repost</button>`
+            : null),
+    },
+  ];
+}
+
+// ── LOAD ARTICLE BODY ON DEMAND ───────────────────────────────────────────────
+async function amLoadBody(articleId, btn) {
+  if (btn) { btn.textContent = '⟳ Loading…'; btn.disabled = true; }
+  try {
+    const data = await fetch(`/api/article/${articleId}/content`).then(r=>r.json());
+    const body = data.article_body || data.body || '';
+
+    // Update body section
+    const ph = document.getElementById('am-body-placeholder');
+    const sec = document.getElementById('am-body-section');
+    if (ph && body) {
+      ph.outerHTML = `<div class="am-article-body">${body}</div>`;
+    } else if (ph) {
+      ph.textContent = 'Could not load article text. The source may require JavaScript.';
+    }
+
+    // Update image if we got a better one
+    const newImg = data.og_image || (Array.isArray(data.image_urls) && data.image_urls[0]);
+    if (newImg && amCurrentArticle && !amCurrentArticle.image_url) {
+      amCurrentArticle.image_url = newImg;
+      // Refresh the info section image
+      const imgWrap = document.querySelector('#am-body + div .am-section:first-child img, #am-wrap img[src=""]');
+    }
+
+    if (btn) { btn.textContent = '✓ Loaded'; btn.style.color = 'var(--green)'; }
+  } catch(e) {
+    if (btn) { btn.textContent = '⚠ Failed'; btn.disabled = false; }
+  }
+}
+
+async function amFetchBodyInBackground(articleId) {
+  try {
+    const data = await fetch(`/api/article/${articleId}/content`).then(r=>r.json());
+    if (amCurrentArticle && amCurrentArticle.id === articleId) {
+      const body = data.article_body || data.body || '';
+      const ph = document.getElementById('am-body-placeholder');
+      if (ph && body) ph.outerHTML = `<div class="am-article-body">${body}</div>`;
+      const btn = document.getElementById('am-load-body-btn');
+      if (btn && body) { btn.textContent = '✓ Article loaded'; btn.style.color = 'var(--green)'; }
+    }
+  } catch(e) {}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODAL PIPELINE ACTION HANDLERS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function amRefreshModal() {
+  if (!amCurrentArticle) return;
+  const page  = amCurrentArticle.page || 'finpulse';
+  const color = DS_PAGE_COLORS[page] || '#888';
+  document.getElementById('am-body').innerHTML = amRenderBody(amCurrentArticle, color);
+  if (!amCurrentArticle.article_body && amCurrentArticle.url)
+    amFetchBodyInBackground(amCurrentArticle.id);
+}
+
+function amSetStepLoading(btn, errId) {
+  btn.dataset.orig = btn.textContent;
+  btn.textContent = '⟳';
+  btn.disabled = true;
+  if (errId) { const e = document.getElementById(errId); if (e) e.textContent = ''; }
+}
+
+function amSetStepError(btn, errId, msg) {
+  btn.textContent = btn.dataset.orig || 'Retry';
+  btn.disabled = false;
+  btn.classList.add('am-btn-err');
+  if (errId) { const e = document.getElementById(errId); if (e) e.textContent = msg; }
+}
+
+async function amActGenCaption(id, page, btn) {
+  amSetStepLoading(btn, `am-act-caption-err-${id}`);
+  try {
+    const data = await fetch(`/api/article/${id}/generate-caption`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    // Update amCurrentArticle and dsArticles
+    if (amCurrentArticle?.id === id) {
+      amCurrentArticle.caption  = data.caption;
+      amCurrentArticle.pipeline_stage = 'captioned';
+    }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].caption = data.caption; dsArticles[idx].pipeline_stage = 'captioned'; }
+    toast('✓ Caption generated', 'var(--green)');
+    amRefreshModal();
+  } catch(e) {
+    amSetStepError(btn, `am-act-caption-err-${id}`, e.message);
+  }
+}
+
+async function amActGenImage(id, page, btn) {
+  amSetStepLoading(btn, `am-act-image-err-${id}`);
+  btn.textContent = '⟳ Building…';
+  try {
+    const data = await fetch(`/api/article/${id}/generate-image`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    if (amCurrentArticle?.id === id) {
+      amCurrentArticle.image_file = data.image_file;
+      amCurrentArticle.image_path = data.image_path;
+      amCurrentArticle.pipeline_stage = 'image_ready';
+    }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].image_file = data.image_file; dsArticles[idx].pipeline_stage = 'image_ready'; }
+    toast('🎨 Post image generated', 'var(--green)');
+    amRefreshModal();
+  } catch(e) {
+    amSetStepError(btn, `am-act-image-err-${id}`, e.message);
+  }
+}
+
+async function amActPost(id, page, btn, repost) {
+  // If not repost and already posted → inline confirm
+  if (!repost && amCurrentArticle?.id === id &&
+      (amCurrentArticle.post_status === 'posted' || amCurrentArticle.is_posted == 1)) {
+    btn.textContent = 'Confirm Repost?';
+    btn.onclick = (e)=>{ e.stopPropagation(); amActPost(id, page, btn, true); };
+    return;
+  }
+  amSetStepLoading(btn, `am-act-post-err-${id}`);
+  btn.textContent = '⟳ Posting…';
+  try {
+    const data = await fetch(`/api/article/${id}/post`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({repost: !!repost})
+    }).then(r=>r.json());
+
+    if (data.already_posted && !repost) {
+      btn.textContent = 'Already posted — Repost?';
+      btn.disabled = false;
+      btn.onclick = (e)=>{ e.stopPropagation(); amActPost(id, page, btn, true); };
+      return;
+    }
+    if (data.error) throw new Error(data.error);
+
+    if (amCurrentArticle?.id === id) {
+      amCurrentArticle.post_status    = 'posted';
+      amCurrentArticle.is_posted      = 1;
+      amCurrentArticle.instagram_post_id = data.instagram_post_id || '';
+      amCurrentArticle.pipeline_stage = 'posted';
+      amCurrentArticle.posted_at      = new Date().toISOString();
+    }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].pipeline_stage='posted'; dsArticles[idx].is_posted=1; }
+    toast('📸 Posted to Instagram!', 'var(--green)');
+    amRefreshModal();
+  } catch(e) {
+    amSetStepError(btn, `am-act-post-err-${id}`, e.message);
+  }
+}
+
+async function amActMarkPosted(id, btn) {
+  amSetStepLoading(btn, null);
+  try {
+    const data = await fetch(`/api/article/${id}/mark-posted`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    if (amCurrentArticle?.id === id) {
+      amCurrentArticle.post_status    = 'posted';
+      amCurrentArticle.is_posted      = 1;
+      amCurrentArticle.pipeline_stage = 'posted';
+      amCurrentArticle.posted_at      = new Date().toISOString();
+    }
+    const idx = dsArticles.findIndex(a=>a.id===id);
+    if (idx>=0) { dsArticles[idx].pipeline_stage='posted'; dsArticles[idx].is_posted=1; }
+    toast('✓ Marked as posted', 'var(--accent)');
+    amRefreshModal();
+  } catch(e) {
+    btn.textContent = '✓ Mark'; btn.disabled = false;
+    alert(`Error: ${e.message}`);
+  }
+}
+
+// ══════════════════════════════════════════
+// FETCHER AUTO-POLL (every 5 minutes)
+// ══════════════════════════════════════════
+
+let fvAutoPollInterval = null;
+let fvAutoPollCountdown = 300; // 5 min
+
+function fvStartAutoPoll() {
+  clearInterval(fvAutoPollInterval);
+  fvAutoPollCountdown = 300;
+  const dot   = document.getElementById('fv-autopoll-dot');
+  const label = document.getElementById('fv-autopoll-label');
+  if (dot) dot.classList.add('active');
+  fvAutoPollInterval = setInterval(async () => {
+    fvAutoPollCountdown--;
+    const m = Math.floor(fvAutoPollCountdown/60);
+    const s = fvAutoPollCountdown%60;
+    if (label) label.textContent = `Auto: ${m}:${s.toString().padStart(2,'0')}`;
+    if (fvAutoPollCountdown <= 0) {
+      fvAutoPollCountdown = 300;
+      if (label) label.textContent = 'Auto: refreshing…';
+      await loadFetcher(true);
+      toast('↻ Fetcher auto-refreshed', 'var(--muted)');
+    }
+  }, 1000);
+}
+
+function fvStopAutoPoll() {
+  clearInterval(fvAutoPollInterval);
+  fvAutoPollInterval = null;
+  const dot   = document.getElementById('fv-autopoll-dot');
+  const label = document.getElementById('fv-autopoll-label');
+  if (dot) dot.classList.remove('active');
+  if (label) label.textContent = 'Auto-refresh: OFF';
+}
+
+// ── BOOT ──
+refreshAll();
+loadStats(); // always load for sidebar
+startCountdown();
+// Start auto-poll immediately so it's ready when user opens Fetcher
+fvStartAutoPoll();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BACKGROUND PROCESSING STATUS POLLER
+// ══════════════════════════════════════════════════════════════════════════════
+
+const SLIDE_LABELS_RP = ['Hero','Story','Pros','Cons','Bottom Line'];
+let _bgPollTimer = null;
+
+async function pollBgStatus() {
+  try {
+    const s = await fetch('/api/bg-status').then(r=>r.json());
+    const pill  = document.getElementById('bg-pill');
+    const sbBg  = document.getElementById('sb-bg');
+    const sbTxt = document.getElementById('sb-bg-txt');
+    const pillTxt = document.getElementById('bg-pill-txt');
+
+    if (s.is_busy) {
+      const active = Object.entries(s.active || {});
+      const qSize  = s.queue_size || 0;
+
+      // Topbar pill
+      if (pill) {
+        pill.style.display = 'flex';
+        const labels = active.map(([id, st]) => st).filter(Boolean);
+        pillTxt.textContent = `${active.length} processing${qSize?' · '+qSize+' queued':''}`;
+      }
+
+      // Sidebar block
+      if (sbBg) {
+        sbBg.style.display = 'block';
+        const lines = active.slice(0,4).map(([id, st]) => {
+          const icon = st==='captioning'?'📝':st==='imaging'?'🎨':'⟳';
+          return `${icon} Article #${id}: ${st}`;
+        });
+        if (qSize) lines.push(`+ ${qSize} queued`);
+        sbTxt.innerHTML = lines.join('<br>');
+      }
+
+      // Also update ready badge count (non-blocking)
+      updateReadyBadge();
+
+      // Keep polling while busy
+      _bgPollTimer = setTimeout(pollBgStatus, 3000);
+
+    } else {
+      // Not busy — hide indicators
+      if (pill) pill.style.display = 'none';
+      if (sbBg) sbBg.style.display = 'none';
+
+      // Update ready badge
+      updateReadyBadge();
+
+      // Slow poll to catch new work
+      _bgPollTimer = setTimeout(pollBgStatus, 8000);
+    }
+
+    // Show any errors briefly
+    const errs = Object.values(s.errors || {});
+    if (errs.length) {
+      console.warn('[bg-processor errors]', errs);
+    }
+  } catch(e) {
+    _bgPollTimer = setTimeout(pollBgStatus, 15000);
+  }
+}
+
+// Also refresh article list in data-sources when bg finishes work
+let _prevBgBusy = false;
+async function pollBgAndRefreshDs() {
+  try {
+    const s = await fetch('/api/bg-status').then(r=>r.json());
+    if (_prevBgBusy && !s.is_busy && dsActiveSrc) {
+      // BG just went idle — silently refresh article list so slides appear
+      const fresh = await fetch('/api/source/'+encodeURIComponent(dsActiveSrc)+'/articles?limit=80').then(r=>r.json());
+      if (fresh.items) { dsArticles = fresh.items; dsRenderArticleList(); }
+    }
+    _prevBgBusy = s.is_busy;
+  } catch(e) {}
+}
+setInterval(pollBgAndRefreshDs, 5000);
+
+// Kick off the bg status poller
+pollBgStatus();
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// POST READY PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _readyItems  = [];
+let _readyFilter = 'all';
+
+const PAGE_BADGES = {
+  finpulse:  {label:'FinPulse',  color:'#00d4aa', bg:'rgba(0,212,170,.15)'},
+  techpulse: {label:'TechPulse', color:'#58a6ff', bg:'rgba(88,166,255,.15)'},
+  corppulse: {label:'CorpPulse', color:'#c9a84c', bg:'rgba(201,168,76,.15)'},
+  worldpulse:{label:'WorldPulse',color:'#e63946', bg:'rgba(230,57,70,.15)'},
+};
+
+async function updateReadyBadge() {
+  try {
+    const d = await fetch('/api/ready-posts').then(r=>r.json());
+    const n = (d.items||[]).length;
+    const badge = document.getElementById('ready-badge');
+    if (badge) { badge.textContent = n; badge.style.display = n ? 'inline-block' : 'none'; }
+    return n;
+  } catch(e) { return 0; }
+}
+
+async function loadReadyPosts() {
+  document.getElementById('ready-list').innerHTML =
+    '<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 0">Loading…</div>';
+  try {
+    const d = await fetch('/api/ready-posts').then(r=>r.json());
+    _readyItems = d.items || [];
+    const badge = document.getElementById('ready-badge');
+    if (badge) { badge.textContent = _readyItems.length; badge.style.display = _readyItems.length ? 'inline-block':'none'; }
+    document.getElementById('ready-panel-sub').textContent =
+      `${_readyItems.length} post${_readyItems.length!==1?'s':''} ready for Instagram`;
+    renderReadyList();
+  } catch(e) {
+    document.getElementById('ready-list').innerHTML =
+      `<div style="color:var(--red);padding:20px">Error: ${e.message}</div>`;
+  }
+}
+
+function filterReadyPage(page, btn) {
+  _readyFilter = page;
+  document.querySelectorAll('.ready-tab').forEach(t=>t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderReadyList();
+}
+
+function renderReadyList() {
+  const list = document.getElementById('ready-list');
+  const items = _readyFilter === 'all'
+    ? _readyItems
+    : _readyItems.filter(x => x.page === _readyFilter);
+
+  if (!items.length) {
+    list.innerHTML = `<div class="rp-empty">
+      <div class="rp-empty-icon">${_readyFilter==='all'?'📭':'🔍'}</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px">
+        ${_readyFilter==='all' ? 'No posts ready yet' : 'None for this page'}
+      </div>
+      <div style="font-size:12px">
+        ${_readyFilter==='all'
+          ? 'Fetch some news and the system will auto-generate captions & carousels.'
+          : 'Try another page or wait for background processing to finish.'}
+      </div>
+    </div>`;
+    return;
+  }
+
+  // Group by page if showing all
+  let html = '';
+  if (_readyFilter === 'all') {
+    const byPage = {};
+    for (const item of items) {
+      if (!byPage[item.page]) byPage[item.page] = [];
+      byPage[item.page].push(item);
+    }
+    for (const [pg, pgItems] of Object.entries(byPage)) {
+      const pb = PAGE_BADGES[pg] || {label:pg, color:'#888', bg:'transparent'};
+      html += `<div class="rp-section-hdr" style="color:${pb.color}">${pb.label} — ${pgItems.length} ready</div>`;
+      html += pgItems.map(item => readyCardHTML(item)).join('');
+    }
+  } else {
+    html = items.map(item => readyCardHTML(item)).join('');
+  }
+
+  list.innerHTML = html;
+}
+
+function readyCardHTML(item) {
+  const pb     = PAGE_BADGES[item.page] || {label:item.page, color:'#888', bg:'#222'};
+  const slides = item.slide_files || [];
+  const esc    = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').substring(0,180);
+  const cap    = (item.caption||'').replace(/\n/g,' ').substring(0, 120);
+
+  const thumbs = slides.map((f, i) => `
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="rp-thumb" onclick="dsOpenLightbox('/img/${f}','Slide ${i+1}: ${SLIDE_LABELS_RP[i]||''}')">
+        <img src="/img/${f}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=font-size:20px;line-height:100px;display:block;text-align:center>🖼</span>'">
+        <span class="rp-thumb-n">${i+1}</span>
+      </div>
+      <div class="rp-thumb-lbl">${SLIDE_LABELS_RP[i]||('S'+(i+1))}</div>
+    </div>`).join('');
+
+  const noSlides = !slides.length && item.image_file
+    ? `<div style="padding:0 14px 10px"><img src="/img/${item.image_file}" style="height:90px;border-radius:7px;border:1px solid var(--border)"
+         onclick="dsOpenLightbox('/img/${item.image_file}','${esc(item.title)}')" loading="lazy"></div>` : '';
+
+  return `<div class="rp-card" id="rp-card-${item.id}">
+    <div class="rp-header">
+      <span class="rp-page-badge" style="color:${pb.color};background:${pb.bg}">${pb.label}</span>
+      <div>
+        <div class="rp-title">${esc(item.title)}</div>
+        <div class="rp-meta">${item.source_name} · Score: ${Math.round(item.score||0)} · ${timeAgo(item.fetched_at)}</div>
+      </div>
+    </div>
+    ${slides.length ? `<div class="rp-slides">${thumbs}</div>` : noSlides}
+    <div class="rp-footer">
+      <div class="rp-caption-preview">${cap ? '"'+cap+'…"' : '<em style="color:var(--muted)">No caption</em>'}</div>
+      <button class="btn-post-now" id="rp-btn-${item.id}"
+        onclick="postReadyItem(${item.id},'${item.page}',this)">📸 Post</button>
+    </div>
+  </div>`;
+}
+
+async function postReadyItem(articleId, page, btn) {
+  const prev = btn.textContent;
+  btn.textContent = '⟳ Posting…'; btn.disabled = true;
+  const statusEl = document.getElementById('post-all-status');
+  try {
+    const data = await fetch(`/api/article/${articleId}/post`, {method:'POST'}).then(r=>r.json());
+    if (data.error && !data.already_posted) throw new Error(data.error);
+    btn.textContent = '✅ Posted'; btn.style.borderColor = 'var(--green)';
+    // Grey out card
+    const card = document.getElementById(`rp-card-${articleId}`);
+    if (card) { card.style.opacity = '.5'; card.style.pointerEvents = 'none'; }
+    // Remove from local list after short delay
+    setTimeout(() => {
+      _readyItems = _readyItems.filter(x => x.id !== articleId);
+      renderReadyList();
+      updateReadyBadge();
+    }, 1800);
+    toast('📸 Posted to Instagram!', 'var(--green)');
+  } catch(e) {
+    btn.textContent = prev; btn.disabled = false;
+    btn.style.borderColor = 'var(--red)'; btn.style.color = 'var(--red)';
+    if (statusEl) { statusEl.textContent = `Error: ${e.message}`; statusEl.style.color = 'var(--red)'; }
+    setTimeout(() => { btn.style.borderColor=''; btn.style.color=''; }, 3000);
+  }
+}
+
+async function postAllReady() {
+  const btn = document.getElementById('btn-post-all');
+  const statusEl = document.getElementById('post-all-status');
+  const toPost = (_readyFilter === 'all' ? _readyItems : _readyItems.filter(x=>x.page===_readyFilter))
+    .filter(x => {
+      const b = document.getElementById(`rp-btn-${x.id}`);
+      return !b || !b.textContent.includes('Posted');
+    });
+
+  if (!toPost.length) { statusEl.textContent = 'Nothing to post.'; return; }
+
+  btn.disabled = true;
+  let done = 0, failed = 0;
+  for (const item of toPost) {
+    const b = document.getElementById(`rp-btn-${item.id}`);
+    statusEl.textContent = `Posting ${done+1}/${toPost.length}…`;
+    statusEl.style.color = 'var(--muted)';
+    if (b) await postReadyItem(item.id, item.page, b);
+    else {
+      try {
+        const r = await fetch(`/api/article/${item.id}/post`,{method:'POST'}).then(r=>r.json());
+        if (r.error && !r.already_posted) failed++;
+        else done++;
+      } catch(e) { failed++; }
+    }
+    await new Promise(r=>setTimeout(r,1500)); // spacing between posts
+  }
+  btn.disabled = false;
+  statusEl.textContent = `Done: ${done} posted${failed?' · '+failed+' failed':''}`;
+  statusEl.style.color = failed ? 'var(--red)' : 'var(--green)';
+}
+
+function openReadyPanel() {
+  document.getElementById('ready-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  loadReadyPosts();
+}
+
+function closeReadyPanel() {
+  document.getElementById('ready-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Keyboard: Escape closes the panel
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeReadyPanel();
+});
+
+// Initial badge count
+updateReadyBadge();
+setInterval(updateReadyBadge, 30000);
+</script>
+</body>
+</html>

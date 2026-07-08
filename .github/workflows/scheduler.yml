@@ -1,0 +1,58 @@
+name: Pulse Media Scheduler
+
+on:
+  schedule:
+    - cron: '0 6 * * *'    # 6:00 AM UTC  (11:30 AM IST)
+    - cron: '30 9 * * *'   # 9:30 AM UTC  (3:00 PM IST)
+    - cron: '0 13 * * *'   # 1:00 PM UTC  (6:30 PM IST)
+    - cron: '0 17 * * *'   # 5:00 PM UTC  (10:30 PM IST)
+  workflow_dispatch:        # manual run button in GitHub UI
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r pulse_media/requirements.txt
+
+      - name: Write .env file
+        run: |
+          cat << 'EOF' > pulse_media/.env
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          IMGBB_API_KEY=${{ secrets.IMGBB_API_KEY }}
+          INSTAGRAM_FINPULSE_USERNAME=${{ secrets.FINPULSE_USERNAME }}
+          INSTAGRAM_FINPULSE_PASSWORD=${{ secrets.FINPULSE_PASSWORD }}
+          INSTAGRAM_TECHPULSE_USERNAME=REPLACE_ME
+          INSTAGRAM_TECHPULSE_PASSWORD=REPLACE_ME
+          INSTAGRAM_CORPPULSE_USERNAME=REPLACE_ME
+          INSTAGRAM_CORPPULSE_PASSWORD=REPLACE_ME
+          INSTAGRAM_WORLDPULSE_USERNAME=REPLACE_ME
+          INSTAGRAM_WORLDPULSE_PASSWORD=REPLACE_ME
+          EOF
+
+      - name: Restore Instagram session
+        run: |
+          mkdir -p pulse_media/data/sessions
+          echo "${{ secrets.FINPULSE_SESSION }}" | base64 -d > pulse_media/data/sessions/finpulse_session.json
+
+      - name: Run FinPulse post cycle
+        run: cd pulse_media && python3 scheduler.py --once finpulse
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduler-logs-${{ github.run_number }}
+          path: pulse_media/logs/
+          retention-days: 7

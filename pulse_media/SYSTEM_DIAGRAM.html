@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pulse Media — System Architecture</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0f; color:#fff; font-family: -apple-system, 'Segoe UI', sans-serif; overflow-x:hidden; }
+
+  .top-bar { background:#111118; border-bottom:1px solid #1e1e2e; padding:14px 28px; display:flex; align-items:center; gap:12px; }
+  .logo { color:#00d4aa; font-size:18px; font-weight:700; letter-spacing:1px; }
+  .sub { color:#666; font-size:13px; }
+  .tabs { display:flex; gap:6px; margin-left:auto; }
+  .tab { padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; border:none; transition:.2s; }
+  .tab.active { background:#00d4aa; color:#000; }
+  .tab:not(.active) { background:#1e1e2e; color:#888; }
+  .tab:hover:not(.active) { background:#2a2a3e; color:#ccc; }
+
+  .view { display:none; padding:28px; }
+  .view.active { display:block; }
+
+  .flow-wrap { display:flex; flex-direction:column; align-items:center; gap:0; }
+  .stage-row { display:flex; align-items:stretch; gap:12px; width:100%; max-width:900px; }
+  .stage-row.centered { justify-content:center; }
+  .stage { background:#111118; border:1px solid #1e1e2e; border-radius:12px; padding:16px 18px; flex:1; position:relative; cursor:pointer; transition:.15s; }
+  .stage:hover { border-color:#00d4aa44; transform:translateY(-1px); }
+  .stage.accent { border-color:#00d4aa55; background:#0d1a16; }
+  .stage.wide { max-width:520px; }
+  .stage-icon { font-size:22px; margin-bottom:6px; }
+  .stage-title { font-size:13px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .stage-file { font-size:11px; color:#00d4aa; font-family:monospace; margin-bottom:6px; }
+  .stage-desc { font-size:11px; color:#888; line-height:1.5; }
+  .stage-badge { position:absolute; top:10px; right:12px; font-size:10px; padding:2px 7px; border-radius:99px; font-weight:700; }
+  .badge-auto { background:#00d4aa22; color:#00d4aa; border:1px solid #00d4aa44; }
+  .badge-new  { background:#7c3aed22; color:#a78bfa; border:1px solid #7c3aed44; }
+  .badge-core { background:#1e3a5f;   color:#60a5fa; border:1px solid #3b82f644; }
+
+  .arrow { display:flex; justify-content:center; align-items:center; height:28px; width:100%; max-width:900px; color:#00d4aa88; font-size:18px; }
+  .arrow-split { display:flex; justify-content:center; gap:80px; width:100%; max-width:900px; color:#00d4aa88; font-size:14px; height:28px; align-items:center; }
+
+  .sources-row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; width:100%; max-width:900px; }
+  .source-chip { background:#111118; border:1px solid #1e1e2e; border-radius:8px; padding:6px 12px; font-size:11px; color:#aaa; display:flex; align-items:center; gap:6px; }
+  .source-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot-fin { background:#00d4aa; } .dot-tech { background:#60a5fa; }
+  .dot-corp { background:#f59e0b; } .dot-world { background:#f87171; }
+
+  .db-row { display:flex; gap:10px; justify-content:center; width:100%; max-width:900px; }
+  .db-chip { background:#0d1a16; border:1px solid #00d4aa33; border-radius:8px; padding:8px 14px; font-size:11px; color:#00d4aa; font-family:monospace; text-align:center; flex:1; }
+  .db-chip span { display:block; color:#555; font-size:10px; margin-top:2px; }
+
+  .output-row { display:flex; gap:10px; justify-content:center; width:100%; max-width:900px; }
+  .output-chip { background:#111118; border:1px solid #7c3aed44; border-radius:8px; padding:10px 16px; font-size:11px; color:#a78bfa; text-align:center; flex:1; }
+  .output-chip .oc-icon { font-size:18px; margin-bottom:4px; }
+  .output-chip .oc-label { font-weight:700; }
+  .output-chip .oc-sub { color:#666; font-size:10px; margin-top:2px; }
+
+  .tree { font-family:monospace; font-size:13px; line-height:2; }
+  .tree-item { display:flex; align-items:center; gap:8px; padding:2px 0; }
+  .tree-item:hover { background:#111118; border-radius:4px; }
+  .indent-1 { padding-left:16px; } .indent-2 { padding-left:32px; } .indent-3 { padding-left:48px; }
+  .fi { width:14px; text-align:center; font-size:12px; }
+  .fn { color:#ccc; } .fn.py { color:#60a5fa; } .fn.new { color:#00d4aa; }
+  .fn.cfg { color:#f59e0b; } .fn.md { color:#a78bfa; } .fn.dir { color:#fff; font-weight:700; }
+  .fn.db { color:#f87171; }
+  .ft { color:#555; font-size:11px; margin-left:auto; padding-right:4px; }
+
+  .run-card { background:#111118; border:1px solid #1e1e2e; border-radius:12px; padding:20px 24px; margin-bottom:14px; }
+  .run-step { display:flex; gap:14px; align-items:flex-start; margin-bottom:12px; }
+  .run-step:last-child { margin-bottom:0; }
+  .step-num { background:#00d4aa; color:#000; font-weight:800; font-size:12px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+  .step-body h4 { font-size:13px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .step-body p { font-size:12px; color:#888; margin-bottom:6px; }
+  code { background:#1e1e2e; color:#00d4aa; padding:4px 8px; border-radius:5px; font-family:monospace; font-size:12px; display:block; margin-top:4px; }
+  .run-card h3 { font-size:14px; font-weight:700; color:#00d4aa; margin-bottom:14px; border-bottom:1px solid #1e1e2e; padding-bottom:10px; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="logo">⚡ PULSE MEDIA GROUP</div>
+  <div class="sub">System Architecture</div>
+  <div class="tabs">
+    <button class="tab active" onclick="show('flow',this)">Flow Diagram</button>
+    <button class="tab" onclick="show('files',this)">File Structure</button>
+    <button class="tab" onclick="show('run',this)">How To Run</button>
+  </div>
+</div>
+
+<!-- FLOW -->
+<div class="view active" id="v-flow">
+  <div class="flow-wrap">
+    <div class="stage-row centered">
+      <div class="stage accent wide">
+        <div class="stage-badge badge-auto">AUTO</div>
+        <div class="stage-icon">⏰</div>
+        <div class="stage-title">TRIGGER</div>
+        <div class="stage-file">scheduler.py / GitHub Actions</div>
+        <div class="stage-desc">4× per day: 6:00, 9:30, 13:00, 17:00 UTC. Also triggerable from Dashboard "Post Now".</div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage-row centered">
+      <div class="stage wide">
+        <div class="stage-badge badge-core">CORE</div>
+        <div class="stage-icon">📡</div>
+        <div class="stage-title">FETCH NEWS</div>
+        <div class="stage-file">pipeline/orchestrator.py + workers/rss_workers.py</div>
+        <div class="stage-desc">All RSS feeds fetched in parallel threads. Each page has 4–6 sources.</div>
+      </div>
+    </div>
+    <div class="arrow" style="height:14px">↓</div>
+    <div class="sources-row">
+      <div class="source-chip"><div class="source-dot dot-fin"></div>Yahoo Finance</div>
+      <div class="source-chip"><div class="source-dot dot-fin"></div>CNBC Markets</div>
+      <div class="source-chip"><div class="source-dot dot-fin"></div>MarketWatch</div>
+      <div class="source-chip"><div class="source-dot dot-tech"></div>TechCrunch</div>
+      <div class="source-chip"><div class="source-dot dot-tech"></div>The Verge</div>
+      <div class="source-chip"><div class="source-dot dot-corp"></div>Reuters Biz</div>
+      <div class="source-chip"><div class="source-dot dot-corp"></div>Forbes</div>
+      <div class="source-chip"><div class="source-dot dot-world"></div>BBC World</div>
+      <div class="source-chip"><div class="source-dot dot-world"></div>AP News</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage-row centered">
+      <div class="stage wide">
+        <div class="stage-badge badge-core">CORE</div>
+        <div class="stage-icon">🔬</div>
+        <div class="stage-title">DEDUPLICATE + SCORE</div>
+        <div class="stage-file">pipeline/orchestrator.py</div>
+        <div class="stage-desc">55% word-overlap merge. Keyword scoring per page topic. Top N saved to DB.</div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="db-row">
+      <div class="db-chip">articles<span>id, title, source, page, score, fetched_at, is_posted</span></div>
+      <div class="db-chip">sources<span>id, url, display_name, page, last_status</span></div>
+      <div class="db-chip">errors<span>id, page, message, occurred_at</span></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage-row centered">
+      <div class="stage wide">
+        <div class="stage-icon">🤖</div>
+        <div class="stage-title">GENERATE CAPTION</div>
+        <div class="stage-file">ai.py</div>
+        <div class="stage-desc"><b style="color:#ccc">Waterfall:</b> Groq (Llama 3.1 70B) → Gemini → Template fallback. Hook + bullets + hashtags.</div>
+      </div>
+    </div>
+    <div class="arrow-split">
+      <span style="color:#555">──────────</span>
+      <span style="color:#00d4aa88">↙ Single &nbsp; Carousel ↘</span>
+      <span style="color:#555">──────────</span>
+    </div>
+    <div class="stage-row" style="max-width:900px; margin:0 auto; justify-content:center; gap:14px;">
+      <div class="stage" style="flex:1; max-width:420px;">
+        <div class="stage-badge badge-core">STANDARD</div>
+        <div class="stage-icon">🎨</div>
+        <div class="stage-title">GENERATE IMAGE</div>
+        <div class="stage-file">image.py</div>
+        <div class="stage-desc">1080×1080 single branded JPEG. Dark theme, teal accent, headline overlay.</div>
+      </div>
+      <div class="stage" style="flex:1; max-width:420px; border-color:#7c3aed44; background:#0f0d1a;">
+        <div class="stage-badge badge-new">NEW</div>
+        <div class="stage-icon">🎠</div>
+        <div class="stage-title">GENERATE CAROUSEL</div>
+        <div class="stage-file">carousel.py</div>
+        <div class="stage-desc">5 × 1080×1080 JPEGs: Hero → Story → Why It Matters → Key Takeaway → CTA.</div>
+      </div>
+    </div>
+    <div class="arrow-split">
+      <span style="color:#555">──────────</span>
+      <span style="color:#00d4aa88">↘ merge ↙</span>
+      <span style="color:#555">──────────</span>
+    </div>
+    <div class="db-row" style="max-width:500px;">
+      <div class="db-chip">posts<span>article_id, page, caption, image_path, status, instagram_post_id, posted_at</span></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage-row centered">
+      <div class="stage accent wide">
+        <div class="stage-badge badge-core">CORE</div>
+        <div class="stage-icon">📲</div>
+        <div class="stage-title">POST TO INSTAGRAM</div>
+        <div class="stage-file">instagram.py (instagrapi v2.4.5)</div>
+        <div class="stage-desc">
+          Single: album_upload([1 img]) → photo_upload fallback<br>
+          Carousel: album_upload([5 imgs]) — native multi-slide<br>
+          Session cached in data/sessions/. No Facebook App needed.
+        </div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="output-row">
+      <div class="output-chip"><div class="oc-icon">📸</div><div class="oc-label">@finpulse.daily</div><div class="oc-sub">Live on Instagram</div></div>
+      <div class="output-chip"><div class="oc-icon">📊</div><div class="oc-label">Dashboard</div><div class="oc-sub">localhost:8888</div></div>
+      <div class="output-chip"><div class="oc-icon">📝</div><div class="oc-label">scheduler.log</div><div class="oc-sub">Full run history</div></div>
+      <div class="output-chip"><div class="oc-icon">☁️</div><div class="oc-label">GitHub Actions</div><div class="oc-sub">4× daily cloud</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FILES -->
+<div class="view" id="v-files">
+<div class="tree">
+  <div class="tree-item"><div class="fi">📁</div><span class="fn dir">pulse_media/</span></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">scheduler.py</span><div class="ft">4× daily runner</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">news.py</span><div class="ft">RSS URLs + keywords per page</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">ai.py</span><div class="ft">Caption — Groq → Gemini → template</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">image.py</span><div class="ft">Single 1080×1080 card (Pillow)</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py new">carousel.py</span><div class="ft">🆕 5-slide carousel generator</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">instagram.py</span><div class="ft">Post + carousel via instagrapi</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py new">post_carousel_now.py</span><div class="ft">🆕 One-command carousel poster</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">setup_login.py</span><div class="ft">First-time IG login</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn py">export_session.py</span><div class="ft">Export session for GitHub Secret</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn cfg">.env</span><div class="ft">API keys + credentials (NEVER commit)</div></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn cfg">requirements.txt</span></div>
+  <div class="tree-item indent-1 " style="margin-top:8px"><div class="fi">📁</div><span class="fn dir">pipeline/</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">orchestrator.py</span><div class="ft">Fetch → dedupe → score → save</div></div>
+  <div class="tree-item indent-1"><div class="fi">📁</div><span class="fn dir">workers/</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">base.py</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">rss_workers.py</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">api_workers.py</span></div>
+  <div class="tree-item indent-1"><div class="fi">📁</div><span class="fn dir">database/</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">schema.py</span><div class="ft">Table creation + get_connection()</div></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">models.py</span><div class="ft">save_article, save_post, get_top_articles…</div></div>
+  <div class="tree-item indent-1"><div class="fi">📁</div><span class="fn dir">dashboard/</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn py">server.py</span><div class="ft">REST API + static serving</div></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn cfg">index.html</span><div class="ft">5-page SPA dashboard</div></div>
+  <div class="tree-item indent-1"><div class="fi">📁</div><span class="fn dir">data/</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn db">pulse.db</span><div class="ft">SQLite database</div></div>
+  <div class="tree-item indent-2"><div class="fi">📁</div><span class="fn dir">sessions/</span></div>
+  <div class="tree-item indent-3"><div class="fi">🔐</div><span class="fn cfg">finpulse_session.json</span><div class="ft">Saved IG login — don't delete</div></div>
+  <div class="tree-item indent-1"><div class="fi">📁</div><span class="fn dir">output/images/</span><div class="ft">All generated JPEGs</div></div>
+  <div class="tree-item indent-1"><div class="fi">📁</div><span class="fn dir">logs/</span></div>
+  <div class="tree-item indent-2"><div class="fi">📄</div><span class="fn cfg">scheduler.log</span></div>
+  <div class="tree-item" style="margin-top:8px"><div class="fi">📁</div><span class="fn dir">.github/workflows/</span></div>
+  <div class="tree-item indent-1"><div class="fi">📄</div><span class="fn cfg">scheduler.yml</span><div class="ft">GitHub Actions 4× daily</div></div>
+</div>
+</div>
+
+<!-- HOW TO RUN -->
+<div class="view" id="v-run">
+  <div class="run-card">
+    <h3>🚀 Post to Instagram</h3>
+    <div class="run-step"><div class="step-num">1</div><div class="step-body"><h4>Single image post</h4><code>cd /Users/risha/PROJECT-A/pulse_media && python3 instagram.py</code></div></div>
+    <div class="run-step"><div class="step-num">2</div><div class="step-body"><h4>5-slide carousel post (new)</h4><code>python3 post_carousel_now.py</code></div></div>
+    <div class="run-step"><div class="step-num">3</div><div class="step-body"><h4>Dry run (preview only)</h4><code>python3 post_carousel_now.py --dry-run</code></div></div>
+  </div>
+  <div class="run-card">
+    <h3>🔄 Fetch Fresh News</h3>
+    <div class="run-step"><div class="step-num">1</div><div class="step-body"><h4>Run pipeline for FinPulse</h4><code>python3 -c "from pipeline.orchestrator import run_pipeline; run_pipeline('finpulse', top_n=10)"</code></div></div>
+    <div class="run-step"><div class="step-num">2</div><div class="step-body"><h4>Full cycle (pipeline + post)</h4><code>python3 scheduler.py --once finpulse</code></div></div>
+  </div>
+  <div class="run-card">
+    <h3>📊 Dashboard</h3>
+    <div class="run-step"><div class="step-num">1</div><div class="step-body"><h4>Open command center</h4><code>python3 dashboard/server.py</code><p style="margin-top:6px">Opens http://localhost:8888</p></div></div>
+  </div>
+  <div class="run-card">
+    <h3>☁️ GitHub Actions Setup</h3>
+    <div class="run-step"><div class="step-num">1</div><div class="step-body"><h4>Export session</h4><code>python3 export_session.py   # copy the output string</code></div></div>
+    <div class="run-step"><div class="step-num">2</div><div class="step-body"><h4>Add 5 GitHub Secrets</h4><p>FINPULSE_SESSION, FINPULSE_USERNAME, FINPULSE_PASSWORD, GROQ_API_KEY, IMGBB_API_KEY</p></div></div>
+    <div class="run-step"><div class="step-num">3</div><div class="step-body"><h4>Push → automation starts</h4><code>git add -A && git commit -m "deploy" && git push</code></div></div>
+  </div>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('v-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

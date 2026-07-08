@@ -1,0 +1,17 @@
+# Secrets
+pulse_media/.env
+
+# Runtime data / DB
+pulse_media/data/
+pulse_media/logs/
+pulse_media/output/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Local dev tooling
+.claude/
