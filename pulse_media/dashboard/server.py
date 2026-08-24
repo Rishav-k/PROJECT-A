@@ -27,203 +27,22 @@ except Exception as _me:
     print(f"⚠️  Migration warning: {_me}")
 
 # ─────────────────────────────────────────────
-# BACKGROUND AUTO-PROCESSOR
-# After any fetch, new articles are queued here.
-# A single daemon thread processes them sequentially:
-#   caption → carousel
+# MANUAL-ONLY PROCESSING MODE
+# Auto-generation is disabled to conserve credits.
+# Articles are fetched and displayed; AI captions and carousels
+# are generated strictly on-demand when the user clicks generate.
 # ─────────────────────────────────────────────
 
-_bg_queue   = _queue.Queue()
-_bg_status  = {}   # {article_id: "queued"|"captioning"|"imaging"|"done"|"error:…"}
-_bg_lock    = threading.Lock()
-
-def _bg_set(article_id, status):
-    with _bg_lock:
-        _bg_status[article_id] = status
-
-def _bg_auto_process(article_id: int, page: str):
-    """Generate caption + carousel for one article. Called from background thread."""
-    try:
-        # Re-fetch fresh state
-        article = _get_article_with_post(article_id)
-        if not article:
-            return
-
-        # ── Step 1: Caption ───────────────────────────────────────────────────
-        if not article.get("caption"):
-            _bg_set(article_id, "captioning")
-            from ai import generate_caption
-            result = generate_caption(article, page)
-            if not result or not result.get("caption"):
-                raise RuntimeError("Caption generation returned empty")
-            caption  = result["caption"]
-            hashtags = result.get("hashtags", "")
-            upconn   = get_connection()
-            post_id  = article.get("post_id")
-            if post_id:
-                upconn.execute("UPDATE posts SET caption=?, hashtags=? WHERE id=?",
-                               (caption, hashtags, post_id))
-            else:
-                cur = upconn.execute(
-                    "INSERT INTO posts (article_id, page, caption, hashtags, status) "
-                    "VALUES (?,?,?,?,'pending')",
-                    (article_id, page, caption, hashtags)
-                )
-                post_id = cur.lastrowid
-            upconn.commit(); upconn.close()
-            article["caption"]  = caption
-            article["post_id"]  = post_id
-            print(f"  ✓ [bg] Caption #{article_id} ({page}) — {len(caption)} chars")
-            time.sleep(2)   # brief pause between articles (Groq rate limit headroom)
-
-        # ── Step 2: Carousel ──────────────────────────────────────────────────
-        if not article.get("image_path"):
-            _bg_set(article_id, "imaging")
-            from carousel import generate_carousel, _parse_caption
-            caption = article.get("caption", "")
-            cd      = _parse_caption(caption, article.get("title", ""))
-            slides  = generate_carousel(article, page=page, caption=caption, caption_data=cd)
-            img_path     = str(slides[0])
-            slides_json  = json.dumps([str(p) for p in slides])
-            post_id      = article.get("post_id")
-            upconn       = get_connection()
-            if post_id:
-                upconn.execute("UPDATE posts SET image_path=?, slide_paths=? WHERE id=?",
-                               (img_path, slides_json, post_id))
-            else:
-                upconn.execute(
-                    "INSERT INTO posts (article_id, page, caption, image_path, slide_paths, status) "
-                    "VALUES (?,?,?,?,?,'pending')",
-                    (article_id, page, article.get("caption",""), img_path, slides_json)
-                )
-            upconn.commit(); upconn.close()
-            print(f"  ✓ [bg] Carousel #{article_id} — {len(slides)} slides")
-
-        _bg_set(article_id, "done")
-
-    except Exception as e:
-        _bg_set(article_id, f"error: {str(e)[:100]}")
-        print(f"  ✗ [bg] #{article_id}: {e}")
-
-
-def _bg_worker_loop():
-    """Daemon thread — drains the background processing queue forever."""
-    while True:
-        try:
-            article_id, page = _bg_queue.get(timeout=10)
-            # Skip if already processed or currently processing
-            cur_status = _bg_status.get(article_id, "")
-            if cur_status in ("imaging", "captioning", "done"):
-                _bg_queue.task_done()
-                continue
-            _bg_auto_process(article_id, page)
-            _bg_queue.task_done()
-            # Trim old done entries — keep latest 100
-            with _bg_lock:
-                done_keys = [k for k, v in _bg_status.items()
-                             if v == "done" or v.startswith("error")]
-                for k in done_keys[:-80]:
-                    _bg_status.pop(k, None)
-        except _queue.Empty:
-            pass
-        except Exception as e:
-            print(f"  ✗ [bg-worker] {e}")
-
-
-def _queue_unprocessed(source_display_name: str, page: str, max_q: int = 5):
-    """
-    Find articles from a source that still need caption or carousel,
-    and push them onto the background queue (top by score, max max_q).
-    """
-    try:
-        conn  = get_connection()
-        posts_cols = {r[1] for r in conn.execute("PRAGMA table_info(posts)").fetchall()}
-        img_check  = ("(p.image_path IS NULL OR p.image_path = '')"
-                      if "image_path" in posts_cols else "1=1")
-        rows  = conn.execute(f"""
-            SELECT a.id, a.page FROM articles a
-            LEFT JOIN posts p ON p.article_id = a.id
-            WHERE a.source_name = ?
-              AND a.is_posted   = 0
-              AND (
-                    p.id IS NULL
-                 OR (p.caption  IS NULL OR p.caption  = '')
-                 OR ({img_check})
-              )
-            ORDER BY a.score DESC
-            LIMIT ?
-        """, (source_display_name, max_q)).fetchall()
-        conn.close()
-        added = 0
-        for row in rows:
-            aid = row[0]; pg = row[1] or page
-            cur = _bg_status.get(aid, "")
-            if cur in ("queued", "captioning", "imaging"):
-                continue
-            _bg_set(aid, "queued")
-            _bg_queue.put((aid, pg))
-            added += 1
-        if added:
-            print(f"  📋 [bg] Queued {added} articles from '{source_display_name}'")
-    except Exception as e:
-        print(f"  ⚠️  [bg] queue_unprocessed error: {e}")
-
-
-def _queue_page_unprocessed(page: str, max_q: int = 10):
-    """Queue unprocessed articles for an entire page."""
-    try:
-        conn  = get_connection()
-        rows  = conn.execute("""
-            SELECT a.id, a.page FROM articles a
-            LEFT JOIN posts p ON p.article_id = a.id
-            WHERE a.page      = ?
-              AND a.is_posted = 0
-              AND (
-                    p.id IS NULL
-                 OR (p.caption   IS NULL OR p.caption   = '')
-                 OR (p.image_path IS NULL OR p.image_path = '')
-              )
-            ORDER BY a.score DESC
-            LIMIT ?
-        """, (page, max_q)).fetchall()
-        conn.close()
-        added = 0
-        for row in rows:
-            aid = row[0]; pg = row[1] or page
-            cur = _bg_status.get(aid, "")
-            if cur in ("queued", "captioning", "imaging"):
-                continue
-            _bg_set(aid, "queued")
-            _bg_queue.put((aid, pg))
-            added += 1
-        if added:
-            print(f"  📋 [bg] Queued {added} articles for page '{page}'")
-    except Exception as e:
-        print(f"  ⚠️  [bg] queue_page error: {e}")
-
-
 def get_bg_status():
-    """Return current background processing queue state."""
-    with _bg_lock:
-        status_copy = dict(_bg_status)
-    active = {aid: s for aid, s in status_copy.items()
-              if s in ("queued", "captioning", "imaging")}
-    errors = {aid: s for aid, s in status_copy.items() if s.startswith("error")}
-    done   = sum(1 for s in status_copy.values() if s == "done")
+    """Return idle status since auto-processor is disabled."""
     return {
-        "queue_size":   _bg_queue.qsize(),
-        "active":       active,
-        "active_count": len(active),
-        "done_count":   done,
-        "errors":       errors,
-        "is_busy":      len(active) > 0 or _bg_queue.qsize() > 0,
+        "queue_size":   0,
+        "active":       {},
+        "active_count": 0,
+        "done_count":   0,
+        "errors":       {},
+        "is_busy":      False,
     }
-
-
-# Start the daemon worker
-_bg_thread = threading.Thread(target=_bg_worker_loop, daemon=True, name="bg-processor")
-_bg_thread.start()
-print("  🔄 Background processor started")
 
 PORT     = int(os.environ.get("PORT", 8888))
 IMAGES_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "output", "images"))
@@ -904,44 +723,25 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def _fetch_one_source(self, display_name: str):
-        """Synchronously fetch a single source, then queue auto-processing."""
+        """Synchronously fetch a single source (manual mode — no auto-post generation)."""
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
             from fetcher import fetch_one_source
             result = fetch_one_source(display_name)
-            # Find the page for this source
-            try:
-                conn = get_connection()
-                row  = conn.execute(
-                    "SELECT page FROM sources WHERE display_name=? LIMIT 1",
-                    (display_name,)).fetchone()
-                conn.close()
-                page = row[0] if row else "finpulse"
-            except Exception:
-                page = "finpulse"
-            # Queue unprocessed articles in the background
-            threading.Thread(
-                target=_queue_unprocessed,
-                args=(display_name, page, 5),
-                daemon=True
-            ).start()
             self._json(result)
         except Exception as e:
             self._json({"error": str(e), "saved": 0, "total": 0})
 
     def _fetch_only(self, page):
-        """Run fetcher.py without posting, then queue auto-processing."""
+        """Run fetcher.py to retrieve and store news (manual mode — no auto-post generation)."""
         def _run():
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
                 from fetcher import fetch_page, fetch_all_pages
                 if page == "all":
                     fetch_all_pages(top_n=10, dry_run=False)
-                    for pg in ("finpulse","techpulse","corppulse","worldpulse"):
-                        _queue_page_unprocessed(pg, max_q=5)
                 else:
                     fetch_page(page, top_n=10, dry_run=False)
-                    _queue_page_unprocessed(page, max_q=5)
             except Exception as e:
                 print(f"[fetch:{page}] {e}")
         threading.Thread(target=_run, daemon=True).start()
