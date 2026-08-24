@@ -60,7 +60,7 @@ SOURCES = [
         "display": "Yahoo Finance",
         "page":    "finpulse",
         "type":    "rss",
-        "url":     "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC,^DJI,^IXIC&region=US&lang=en-US",
+        "url":     "https://finance.yahoo.com/news/rssindex",
         "trust":   "high",
         "category":"markets",
         "max_items": 20,
@@ -96,13 +96,13 @@ SOURCES = [
         "max_items": 20,
     },
     {
-        "name":    "reuters_finance",
-        "display": "Reuters Finance",
+        "name":    "coindesk",
+        "display": "CoinDesk",
         "page":    "finpulse",
         "type":    "rss",
-        "url":     "https://feeds.reuters.com/reuters/businessNews",
+        "url":     "https://www.coindesk.com/arc/outboundfeeds/rss/",
         "trust":   "high",
-        "category":"business",
+        "category":"crypto",
         "max_items": 20,
     },
     {
@@ -111,9 +111,11 @@ SOURCES = [
         "page":    "finpulse",
         "type":    "rss",
         "url":     "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&dateb=&owner=include&count=40&output=atom",
+        "headers": {"User-Agent": "PulseMediaBot/1.0 (contact@pulsemedia.com)"},
         "trust":   "primary",   # primary source = highest trust
         "category":"filing",
         "max_items": 20,
+        "max_age_hours": 168,   # 7 days for regulatory filings
         "score_boost": 20,      # all SEC filings get +20 pts
     },
     {
@@ -125,18 +127,8 @@ SOURCES = [
         "trust":   "primary",
         "category":"macro",
         "max_items": 10,
+        "max_age_hours": 168,   # 7 days for central bank releases
         "score_boost": 30,      # Fed news = always critical
-    },
-    {
-        "name":    "bls_gov",
-        "display": "BLS (Inflation/Jobs)",
-        "page":    "finpulse",
-        "type":    "rss",
-        "url":     "https://www.bls.gov/feed/bls_latest.rss",
-        "trust":   "primary",
-        "category":"macro",
-        "max_items": 10,
-        "score_boost": 15,
     },
     {
         "name":    "seeking_alpha",
@@ -164,8 +156,7 @@ SOURCES = [
         "display": "Google News Finance",
         "page":    "finpulse",
         "type":    "rss",
-        # Google News Business topic feed (Atom format, auto-curated by Google)
-        "url":     "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"markets",
         "max_items": 25,
@@ -175,8 +166,7 @@ SOURCES = [
         "display": "Google News Stocks",
         "page":    "finpulse",
         "type":    "rss",
-        # Targeted search: stock market, nasdaq, S&P, investing
-        "url":     "https://news.google.com/rss/search?q=stock+market+nasdaq+SP500+investing+fed+rate&hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/search?q=stock+market+OR+nasdaq+OR+SP500+when:48h&hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"markets",
         "max_items": 25,
@@ -253,14 +243,23 @@ SOURCES = [
         "category":"tech",
         "max_items": 15,
     },
+    {
+        "name":    "techmeme",
+        "display": "Techmeme",
+        "page":    "techpulse",
+        "type":    "rss",
+        "url":     "https://www.techmeme.com/feed.xml",
+        "trust":   "high",
+        "category":"tech",
+        "max_items": 20,
+    },
     # ── Google News — TechPulse ───────────────────────────────────────────────
     {
         "name":    "google_news_tech",
         "display": "Google News Tech",
         "page":    "techpulse",
         "type":    "rss",
-        # Google News Technology topic feed (curated by Google)
-        "url":     "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNREptZEhjU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"tech",
         "max_items": 25,
@@ -270,8 +269,7 @@ SOURCES = [
         "display": "Google News AI",
         "page":    "techpulse",
         "type":    "rss",
-        # Targeted search: AI, LLMs, OpenAI, startups
-        "url":     "https://news.google.com/rss/search?q=artificial+intelligence+OpenAI+LLM+startup+funding+tech&hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/search?q=artificial+intelligence+OR+OpenAI+OR+LLM+OR+startup+when:48h&hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"tech",
         "max_items": 25,
@@ -279,21 +277,21 @@ SOURCES = [
 
     # ── CORPPULSE — Corporate News ────────────────────────────────────────────
     {
-        "name":    "reuters_corp",
-        "display": "Reuters Business",
+        "name":    "fortune",
+        "display": "Fortune",
         "page":    "corppulse",
         "type":    "rss",
-        "url":     "https://feeds.reuters.com/reuters/businessNews",
+        "url":     "https://fortune.com/feed/",
         "trust":   "high",
         "category":"corporate",
-        "max_items": 20,
+        "max_items": 15,
     },
     {
         "name":    "forbes_corp",
         "display": "Forbes",
         "page":    "corppulse",
         "type":    "rss",
-        "url":     "https://www.forbes.com/real-time/feed2/",
+        "url":     "https://www.forbes.com/business/feed/",
         "trust":   "high",
         "category":"corporate",
         "max_items": 15,
@@ -334,9 +332,11 @@ SOURCES = [
         "page":    "corppulse",
         "type":    "rss",
         "url":     "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&dateb=&owner=include&count=40&output=atom",
+        "headers": {"User-Agent": "PulseMediaBot/1.0 (contact@pulsemedia.com)"},
         "trust":   "primary",
         "category":"filing",
         "max_items": 20,
+        "max_age_hours": 168,
         "score_boost": 20,
     },
     # ── Google News — CorpPulse ───────────────────────────────────────────────
@@ -345,8 +345,7 @@ SOURCES = [
         "display": "Google News Business",
         "page":    "corppulse",
         "type":    "rss",
-        # Google News Business topic feed (curated by Google)
-        "url":     "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"corporate",
         "max_items": 25,
@@ -356,8 +355,7 @@ SOURCES = [
         "display": "Google News Earnings",
         "page":    "corppulse",
         "type":    "rss",
-        # Targeted search: CEO moves, earnings, M&A
-        "url":     "https://news.google.com/rss/search?q=CEO+earnings+merger+acquisition+corporate+layoffs+IPO&hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/search?q=earnings+OR+merger+OR+acquisition+OR+layoffs+OR+IPO+when:48h&hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"corporate",
         "max_items": 25,
@@ -375,11 +373,11 @@ SOURCES = [
         "max_items": 20,
     },
     {
-        "name":    "reuters_world",
-        "display": "Reuters World",
+        "name":    "politico",
+        "display": "Politico",
         "page":    "worldpulse",
         "type":    "rss",
-        "url":     "https://feeds.reuters.com/reuters/worldNews",
+        "url":     "https://rss.politico.com/politics-news.xml",
         "trust":   "high",
         "category":"world",
         "max_items": 20,
@@ -390,16 +388,6 @@ SOURCES = [
         "page":    "worldpulse",
         "type":    "rss",
         "url":     "https://www.aljazeera.com/xml/rss/all.xml",
-        "trust":   "high",
-        "category":"world",
-        "max_items": 20,
-    },
-    {
-        "name":    "ap_news",
-        "display": "AP News",
-        "page":    "worldpulse",
-        "type":    "rss",
-        "url":     "https://rsshub.app/apnews/topics/world-news",
         "trust":   "high",
         "category":"world",
         "max_items": 20,
@@ -440,8 +428,7 @@ SOURCES = [
         "display": "Google News World",
         "page":    "worldpulse",
         "type":    "rss",
-        # Google News World topic feed (curated by Google)
-        "url":     "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"world",
         "max_items": 25,
@@ -451,8 +438,7 @@ SOURCES = [
         "display": "Google News Geopolitics",
         "page":    "worldpulse",
         "type":    "rss",
-        # Targeted search: elections, conflict, diplomacy
-        "url":     "https://news.google.com/rss/search?q=election+conflict+diplomacy+geopolitics+sanctions+war+ceasefire&hl=en-US&gl=US&ceid=US:en",
+        "url":     "https://news.google.com/rss/search?q=geopolitics+OR+diplomacy+OR+summit+OR+election+OR+sanctions+when:48h&hl=en-US&gl=US&ceid=US:en",
         "trust":   "high",
         "category":"world",
         "max_items": 25,
@@ -518,7 +504,7 @@ HEADERS = {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
 }
 
 # Media RSS namespace (Yahoo Finance, Reuters, Verge, etc.)
@@ -886,6 +872,13 @@ def _parse_rss(xml_text: str, source_config: dict, max_items: int) -> list[dict]
     Handles both RSS <item> and Atom <entry> formats.
     """
     articles = []
+    if not xml_text:
+        return []
+
+    # Strip UTF-8 BOM if present
+    if xml_text.startswith("\ufeff"):
+        xml_text = xml_text[1:]
+
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError as e:
@@ -902,6 +895,8 @@ def _parse_rss(xml_text: str, source_config: dict, max_items: int) -> list[dict]
 
     items = (root.findall("atom:entry", ns) if is_atom
              else root.findall(".//item"))
+
+    max_age_limit = source_config.get("max_age_hours", 72)
 
     for item in items[:max_items]:
         if is_atom:
@@ -922,9 +917,9 @@ def _parse_rss(xml_text: str, source_config: dict, max_items: int) -> list[dict]
 
         published_at = _parse_date(pub)
 
-        # Skip articles older than 72h if we have a date
+        # Skip articles older than max_age_limit if we have a date
         age = _age_hours(published_at)
-        if age is not None and age > 72:
+        if age is not None and age > max_age_limit:
             continue
 
         # Extract images from the RSS item itself (fast — no extra HTTP requests)
@@ -954,14 +949,18 @@ def _parse_rss(xml_text: str, source_config: dict, max_items: int) -> list[dict]
 # HTTP FETCHER (with retry)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _fetch_url(url: str, timeout: int = 12, retries: int = 2) -> Optional[str]:
+def _fetch_url(url: str, headers: dict = None, timeout: int = 12, retries: int = 2) -> Optional[str]:
     """
     Fetch a URL with retry + exponential backoff.
     Returns response text or None on failure.
     """
+    req_headers = dict(HEADERS)
+    if headers:
+        req_headers.update(headers)
+
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=timeout)
+            resp = requests.get(url, headers=req_headers, timeout=timeout)
             resp.raise_for_status()
             return resp.text
         except requests.exceptions.Timeout:
@@ -992,11 +991,12 @@ def fetch_source(source_config: dict) -> tuple[str, list[dict], str]:
     url        = source_config.get("url")
     max_items  = source_config.get("max_items", 20)
     page       = source_config["page"]
+    headers    = source_config.get("headers")
 
     if not url:
         return name, [], "no_url"
 
-    xml_text = _fetch_url(url)
+    xml_text = _fetch_url(url, headers=headers)
     if not xml_text:
         return name, [], "fetch_failed"
 

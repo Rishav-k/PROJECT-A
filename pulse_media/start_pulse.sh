@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────
 
 set -e
-PROJECT="$HOME/PROJECT-A/pulse_media"
+PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load NGROK_TOKEN (and other vars) from .env
 if [ -f "$PROJECT/.env" ]; then

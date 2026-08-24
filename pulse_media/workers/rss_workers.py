@@ -13,7 +13,7 @@ class YahooFinanceWorker(BaseWorker):
     display_name = "Yahoo Finance"
     page         = "finpulse"
     source_type  = "rss"
-    URL = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC,^DJI,^IXIC&region=US&lang=en-US"
+    URL = "https://finance.yahoo.com/news/rssindex"
 
     def fetch(self):
         r = self._get(self.URL)
@@ -72,28 +72,23 @@ class MarketWatchWorker(BaseWorker):
         return articles
 
 
-class ReutersBusinessWorker(BaseWorker):
-    name         = "reuters_biz"
-    display_name = "Reuters Business"
+class CoinDeskWorker(BaseWorker):
+    name         = "coindesk"
+    display_name = "CoinDesk"
     page         = "finpulse"
     source_type  = "rss"
-    URL = "https://www.reuters.com/arc/outboundfeeds/rss/?outputType=xml"
+    URL = "https://www.coindesk.com/arc/outboundfeeds/rss/"
 
     def fetch(self):
         r = self._get(self.URL)
         articles = self._parse_rss(r.text)
         for a in articles:
-            a["category"] = "business"
+            a["category"] = "crypto"
             self.score(a)
         return articles
 
 
 class SECEdgarWorker(BaseWorker):
-    """
-    SEC EDGAR — official company filings (8-K forms).
-    8-K = major company event: earnings, CEO change, merger, bankruptcy.
-    This is PRIMARY SOURCE data — highest trust.
-    """
     name         = "sec_edgar"
     display_name = "SEC EDGAR"
     page         = "finpulse"
@@ -102,19 +97,17 @@ class SECEdgarWorker(BaseWorker):
            "?action=getcurrent&type=8-K&dateb=&owner=include&count=40&output=atom")
 
     def fetch(self):
-        r = self._get(self.URL)
+        r = self._get(self.URL, headers={"User-Agent": "PulseMediaBot/1.0 (contact@pulsemedia.com)"})
         articles = self._parse_rss(r.text)
         for a in articles:
             a["category"] = "filing"
             a["source_name"] = "SEC EDGAR"
-            # SEC filings are primary source — always high score
             a["score"] = max(a.get("score", 0), 70.0)
             self.score(a)
         return articles
 
 
 class FederalReserveWorker(BaseWorker):
-    """Federal Reserve press releases — rate decisions, policy statements."""
     name         = "federal_reserve"
     display_name = "Federal Reserve"
     page         = "finpulse"
@@ -126,24 +119,23 @@ class FederalReserveWorker(BaseWorker):
         articles = self._parse_rss(r.text)
         for a in articles:
             a["category"] = "macro"
-            a["score"] = max(a.get("score", 0), 80.0)  # Fed news = always important
+            a["score"] = max(a.get("score", 0), 80.0)
             self.score(a)
         return articles
 
 
-class BLSWorker(BaseWorker):
-    """Bureau of Labor Statistics — CPI (inflation), jobs reports."""
-    name         = "bls_gov"
-    display_name = "BLS (Inflation Data)"
+class SeekingAlphaWorker(BaseWorker):
+    name         = "seeking_alpha"
+    display_name = "Seeking Alpha"
     page         = "finpulse"
     source_type  = "rss"
-    URL = "https://www.bls.gov/feed/bls_latest.rss"
+    URL = "https://seekingalpha.com/market_currents.xml"
 
     def fetch(self):
         r = self._get(self.URL)
         articles = self._parse_rss(r.text)
         for a in articles:
-            a["category"] = "macro"
+            a["category"] = "analysis"
             self.score(a)
         return articles
 
@@ -198,12 +190,60 @@ class ArsTechnicaWorker(BaseWorker):
         return articles
 
 
+class WiredWorker(BaseWorker):
+    name         = "wired"
+    display_name = "Wired"
+    page         = "techpulse"
+    source_type  = "rss"
+    URL = "https://www.wired.com/feed/rss"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "tech"
+            self.score(a)
+        return articles
+
+
 class HackerNewsWorker(BaseWorker):
     name         = "hacker_news"
     display_name = "Hacker News"
     page         = "techpulse"
     source_type  = "rss"
     URL = "https://news.ycombinator.com/rss"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "tech"
+            self.score(a)
+        return articles
+
+
+class VentureBeatWorker(BaseWorker):
+    name         = "venturebeat"
+    display_name = "VentureBeat"
+    page         = "techpulse"
+    source_type  = "rss"
+    URL = "https://venturebeat.com/feed/"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "tech"
+            self.score(a)
+        return articles
+
+
+class TechmemeWorker(BaseWorker):
+    name         = "techmeme"
+    display_name = "Techmeme"
+    page         = "techpulse"
+    source_type  = "rss"
+    URL = "https://www.techmeme.com/feed.xml"
 
     def fetch(self):
         r = self._get(self.URL)
@@ -232,12 +272,12 @@ class BBCWorldWorker(BaseWorker):
         return articles
 
 
-class ReutersWorldWorker(BaseWorker):
-    name         = "reuters_world"
-    display_name = "Reuters World"
+class PoliticoWorker(BaseWorker):
+    name         = "politico"
+    display_name = "Politico"
     page         = "worldpulse"
     source_type  = "rss"
-    URL = "https://www.reuters.com/arc/outboundfeeds/rss/?outputType=xml"
+    URL = "https://rss.politico.com/politics-news.xml"
 
     def fetch(self):
         r = self._get(self.URL)
@@ -264,14 +304,110 @@ class AlJazeeraWorker(BaseWorker):
         return articles
 
 
+class NYTWorldWorker(BaseWorker):
+    name         = "nyt_world"
+    display_name = "NYT World"
+    page         = "worldpulse"
+    source_type  = "rss"
+    URL = "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "world"
+            self.score(a)
+        return articles
+
+
+class GuardianWorldWorker(BaseWorker):
+    name         = "guardian_world"
+    display_name = "The Guardian"
+    page         = "worldpulse"
+    source_type  = "rss"
+    URL = "https://www.theguardian.com/world/rss"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "world"
+            self.score(a)
+        return articles
+
+
+class France24Worker(BaseWorker):
+    name         = "france24"
+    display_name = "France 24"
+    page         = "worldpulse"
+    source_type  = "rss"
+    URL = "https://www.france24.com/en/rss"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "world"
+            self.score(a)
+        return articles
+
+
 # ── CORPPULSE WORKERS ───────────────────────────────────────────
 
+class FortuneWorker(BaseWorker):
+    name         = "fortune"
+    display_name = "Fortune"
+    page         = "corppulse"
+    source_type  = "rss"
+    URL = "https://fortune.com/feed/"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "corporate"
+            self.score(a)
+        return articles
+
+
 class ForbesWorker(BaseWorker):
-    name         = "forbes"
+    name         = "forbes_corp"
     display_name = "Forbes"
     page         = "corppulse"
     source_type  = "rss"
-    URL = "https://www.forbes.com/real-time/feed2/"
+    URL = "https://www.forbes.com/business/feed/"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "corporate"
+            self.score(a)
+        return articles
+
+
+class CNBCBizWorker(BaseWorker):
+    name         = "cnbc_biz"
+    display_name = "CNBC Business"
+    page         = "corppulse"
+    source_type  = "rss"
+    URL = "https://www.cnbc.com/id/10001147/device/rss/rss.html"
+
+    def fetch(self):
+        r = self._get(self.URL)
+        articles = self._parse_rss(r.text)
+        for a in articles:
+            a["category"] = "corporate"
+            self.score(a)
+        return articles
+
+
+class BusinessInsiderWorker(BaseWorker):
+    name         = "business_insider"
+    display_name = "Business Insider"
+    page         = "corppulse"
+    source_type  = "rss"
+    URL = "https://feeds.businessinsider.com/custom/all"
 
     def fetch(self):
         r = self._get(self.URL)
@@ -290,21 +426,30 @@ ALL_WORKERS = [
     CNBCMarketsWorker,
     CNBCEconomyWorker,
     MarketWatchWorker,
-    ReutersBusinessWorker,
+    CoinDeskWorker,
     SECEdgarWorker,
     FederalReserveWorker,
-    BLSWorker,
+    SeekingAlphaWorker,
     # TechPulse
     TechCrunchWorker,
     TheVergeWorker,
     ArsTechnicaWorker,
+    WiredWorker,
     HackerNewsWorker,
+    VentureBeatWorker,
+    TechmemeWorker,
     # WorldPulse
     BBCWorldWorker,
-    ReutersWorldWorker,
+    PoliticoWorker,
     AlJazeeraWorker,
+    NYTWorldWorker,
+    GuardianWorldWorker,
+    France24Worker,
     # CorpPulse
+    FortuneWorker,
     ForbesWorker,
+    CNBCBizWorker,
+    BusinessInsiderWorker,
 ]
 
 # Filter by page
