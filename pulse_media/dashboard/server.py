@@ -657,6 +657,23 @@ def post_action_publish(post_id: int) -> dict:
         return {"error": str(e), "success": False}
 
 
+def instagram_action_login(page: str = "finpulse", code: str = None) -> dict:
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from instagram import get_client, get_credentials
+        cl = get_client(page, verification_code=code)
+        creds = get_credentials(page)
+        info = cl.user_info_by_username(creds["username"])
+        return {
+            "success": True,
+            "username": creds["username"],
+            "follower_count": info.follower_count,
+            "message": f"Successfully connected to @{creds['username']}!"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def post_action_delete(post_id: int) -> dict:
     try:
         conn = get_connection()
@@ -814,6 +831,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(generate_market_impact_post())
             except Exception as e:
                 self._json({"error": str(e), "success": False})
+            return
+
+        if path == "/api/instagram/login":
+            page = body.get("page", "finpulse")
+            code = body.get("verification_code") or body.get("code")
+            self._json(instagram_action_login(page, code))
             return
 
         m_post = re.match(r"^/api/post/(\d+)/(publish|delete)$", path)

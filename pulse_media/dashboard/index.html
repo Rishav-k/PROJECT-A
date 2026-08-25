@@ -1615,6 +1615,7 @@ async function pmPublishCurrentPost() {
 
   const postId = currentPreviewPost.id || currentPreviewPost.post_id;
   const artId = currentPreviewPost.article_id;
+  const page = currentPreviewPost.page || 'finpulse';
 
   try {
     let res;
@@ -1630,7 +1631,26 @@ async function pmPublishCurrentPost() {
       throw new Error("No post or article ID to publish");
     }
 
-    if (res.error) throw new Error(res.error);
+    if (res && res.error && (res.error.includes('TWO_FACTOR_REQUIRED') || res.error.includes('two-factor') || res.error.includes('2FA') || res.error.includes('verification_code'))) {
+      const code = prompt(`🔐 Instagram 2FA Verification Code Required\n\nTwo-factor authentication is active on @${page}.daily.\n\nPlease enter the 6-digit code sent to your SMS or Authenticator App:`);
+      if (code && code.trim()) {
+        toast('🔑 Authenticating 2FA session…', 'var(--accent)');
+        const loginRes = await fetch('/api/instagram/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({page: page, verification_code: code.trim()})
+        }).then(r=>r.json());
+        if (loginRes.error) throw new Error(loginRes.error);
+        toast('✅ Connected! Retrying Instagram publish…', 'var(--green)');
+        // Retry
+        if (postId) res = await fetch(`/api/post/${postId}/publish`, {method: 'POST'}).then(r=>r.json());
+        else res = await fetch(`/api/article/${artId}/post`, {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({repost:false})}).then(r=>r.json());
+      } else {
+        throw new Error("2FA verification was cancelled.");
+      }
+    }
+
+    if (!res || res.error) throw new Error(res ? res.error : "Unknown error");
     toast('🚀 Successfully published to Instagram!', 'var(--green)');
     if (btn) btn.innerHTML = '✅ Posted to Instagram';
     setTimeout(() => {
@@ -1753,8 +1773,24 @@ async function publishQueuePost(postId, btn) {
   btn.innerHTML = '⟳ Posting…';
   btn.disabled = true;
   try {
-    const res = await fetch(`/api/post/${postId}/publish`, {method:'POST'}).then(r=>r.json());
-    if (res.error) throw new Error(res.error);
+    let res = await fetch(`/api/post/${postId}/publish`, {method:'POST'}).then(r=>r.json());
+    if (res && res.error && (res.error.includes('TWO_FACTOR_REQUIRED') || res.error.includes('two-factor') || res.error.includes('2FA') || res.error.includes('verification_code'))) {
+      const code = prompt(`🔐 Instagram 2FA Verification Code Required\n\nTwo-factor authentication is active on this account.\n\nPlease enter the 6-digit code sent to your SMS or Authenticator App:`);
+      if (code && code.trim()) {
+        toast('🔑 Authenticating 2FA session…', 'var(--accent)');
+        const loginRes = await fetch('/api/instagram/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({page: 'finpulse', verification_code: code.trim()})
+        }).then(r=>r.json());
+        if (loginRes.error) throw new Error(loginRes.error);
+        toast('✅ Connected! Retrying Instagram publish…', 'var(--green)');
+        res = await fetch(`/api/post/${postId}/publish`, {method:'POST'}).then(r=>r.json());
+      } else {
+        throw new Error("2FA verification was cancelled.");
+      }
+    }
+    if (!res || res.error) throw new Error(res ? res.error : "Instagram publish failed");
     toast('🚀 Published to Instagram!', 'var(--green)');
     btn.innerHTML = '✅ Posted';
     updateQueueBadge();
