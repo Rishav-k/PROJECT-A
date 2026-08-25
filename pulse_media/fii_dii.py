@@ -373,6 +373,27 @@ def _fallback_sentiment_analysis(articles, fii_dii, indices):
     }
 
 
+def generate_catchy_phrase(nifty: Dict[str, Any], sensex: Dict[str, Any]) -> tuple[str, str]:
+    """Generates an engaging, high-energy headline hook for Slide 1."""
+    pct = nifty.get("change_pct", 0.0)
+    n_chg = nifty.get("change", 0.0)
+    s_chg = sensex.get("change", 0.0)
+    s_price = sensex.get("price", 0.0)
+
+    if pct >= 1.0:
+        return ("BULLS ON RAMPAGE!", f"NIFTY SURGES {abs(n_chg):.0f}+ PTS • SENSEX GAINS {abs(s_chg):.0f}+ PTS")
+    elif pct >= 0.4:
+        return ("GREEN WAVE ON D-STREET!", f"NIFTY ADDS {abs(n_chg):.0f} PTS • SENSEX UP {abs(s_chg):.0f} PTS")
+    elif pct > 0:
+        return ("MOMENTUM HOLDS FIRM!", f"NIFTY EDGES HIGHER • BULLS DEFEND SUPPORT")
+    elif pct <= -1.0:
+        return ("MARKET UNDER PRESSURE!", f"SENSEX TUMBLES {abs(s_chg):.0f}+ PTS AS BEARS TAKE CONTROL")
+    elif pct <= -0.4:
+        return ("BEARS AT THE GATES!", f"NIFTY SLIPS {abs(n_chg):.0f} PTS • D-STREET WITNESSES SELLING")
+    else:
+        return ("TIGHT ROPE ON D-STREET!", f"NIFTY RANGEBOUND • KEY BREAKOUT AHEAD")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. 4-SLIDE CAROUSEL & CAPTION GENERATOR
 # ─────────────────────────────────────────────────────────────────────────────
@@ -380,7 +401,7 @@ def _fallback_sentiment_analysis(articles, fii_dii, indices):
 def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     """
     Generates the exact 4-slide carousel & comprehensive AI caption:
-      • Slide 1: Nifty & Sensex Movement
+      • Slide 1: Nifty & Sensex Movement (with dynamic catchy phrase)
       • Slide 2: Nifty Cash Inflows (FII, DII, Institutional, Retail)
       • Slide 3: Market Sentiments & Sector Radar
       • Slide 4: Major News & Headlines
@@ -406,7 +427,9 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     bank_info = indices["banknifty"]
     vix_info = indices["vix"]
 
-    caption = f"""📊 DAILY MARKET PULSE: NIFTY, SENSEX, FLOWS & NEWS 🚀
+    hook_main, hook_sub = generate_catchy_phrase(nifty_info, sensex_info)
+
+    caption = f"""🔥 {hook_main} {hook_sub} 🚀
 
 📈 1. NIFTY & SENSEX MOVEMENT:
 • NIFTY 50: {nifty_info['formatted_price']} ({nifty_info['formatted_change']})
@@ -471,8 +494,8 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     d1 = ImageDraw.Draw(img1)
     draw_top_handle(img1, d1, handle, C_CREAM)
 
-    d1.text((SIZE // 2, 105), "MARKET CLOSING PULSE:", fill=C_CREAM, font=_get_font("impact", 76), anchor="mt")
-    d1.text((SIZE // 2, 190), "NIFTY & SENSEX MOVEMENT", fill=C_ORANGE, font=_get_font("din_cond", 52), anchor="mt")
+    d1.text((SIZE // 2, 105), hook_main, fill=C_CREAM, font=_get_font("impact", 74), anchor="mt")
+    d1.text((SIZE // 2, 190), hook_sub, fill=C_ORANGE, font=_get_font("din_cond", 48), anchor="mt")
 
     # Center Scoreboard in Cream #FEF3DC
     d1.rounded_rectangle([(80, 270), (SIZE - 80, 810)], radius=24, fill=C_CREAM, outline=C_DARK, width=6)
@@ -501,11 +524,11 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     d1.line([(540, 565), (540, 645)], fill=C_DARK, width=2)
 
     d1.text((765, 570), "INDIA VIX (VOLATILITY)", fill=C_MAROON, font=_get_font("din_cond", 28), anchor="mt")
-    d1.text((765, 608), f"{vix_info['price']} ({vix_info['change_pct']:+.2f}%)", fill=C_TEAL if vix_info['change'] <= 0 else C_RED, font=_get_font("impact", 32), anchor="mt")
+    d1.text((765, 608), f"{vix_info['price']:.2f} ({vix_info['change_pct']:+.2f}%)", fill=C_TEAL if vix_info['change'] <= 0 else C_RED, font=_get_font("impact", 32), anchor="mt")
 
     # Day Summary Footer
     d1.rounded_rectangle([(115, 685), (965, 770)], radius=12, fill=C_ORANGE, outline=C_DARK, width=3)
-    d1.text((SIZE // 2, 725), "BULLS IN COMMAND • BROAD MARKET OUTPERFORMANCE", fill=C_WHITE, font=_get_font("impact", 32), anchor="mm")
+    d1.text((SIZE // 2, 725), f"D-STREET ACTION • {hook_main}", fill=C_WHITE, font=_get_font("impact", 32), anchor="mm")
 
     draw_swipe_arrow(d1, SIZE // 2, 890, C_TEAL)
     draw_bottom_handle(d1, handle, C_CREAM)
