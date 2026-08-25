@@ -122,13 +122,15 @@ def get_pipeline_data():
         rows.append(d)
     return {"stages": stages, "items": rows}
 
-def get_posts_by_page(page=None, status=None, limit=30):
+def get_posts_by_page(page=None, status=None, limit=50):
     conn = get_connection()
     q = """
-        SELECT p.id, p.page, p.status, p.caption, p.image_path,
+        SELECT p.id, p.article_id, p.page, p.status, p.caption, p.image_path, p.slide_paths,
                p.instagram_post_id, p.created_at, p.posted_at,
-               a.title, a.source_name, a.url, a.score, a.fetched_at
-        FROM posts p JOIN articles a ON p.article_id = a.id
+               COALESCE(a.title, 'Market Intelligence Post') as title,
+               COALESCE(a.source_name, 'Pulse AI') as source_name,
+               a.url, a.score, a.fetched_at
+        FROM posts p LEFT JOIN articles a ON p.article_id = a.id
         WHERE 1=1
     """
     params = []
@@ -152,6 +154,18 @@ def get_posts_by_page(page=None, status=None, limit=30):
                 d["image_file"] = os.path.basename(d["image_path"])
         else:
             d["image_file"] = None
+
+        # Parse slide_paths to slide_files
+        d["slide_files"] = []
+        if d.get("slide_paths"):
+            try:
+                sp_list = json.loads(d["slide_paths"]) if isinstance(d["slide_paths"], str) else d["slide_paths"]
+                d["slide_files"] = [os.path.basename(p) for p in sp_list if p]
+            except Exception:
+                d["slide_files"] = [d["image_file"]] if d.get("image_file") else []
+        elif d.get("image_file"):
+            d["slide_files"] = [d["image_file"]]
+
         result.append(d)
     return result
 
@@ -585,13 +599,73 @@ def article_action_mark_posted(article_id: int) -> dict:
             (article_id,)
         )
         upconn.execute(
-            "UPDATE posts SET status='posted', posted_at=datetime('now') WHERE article_id=? AND status='pending'",
+            "UPDATE posts SET status='posted', posted_at=datetime('now') WHERE article_id=?",
             (article_id,)
         )
         upconn.commit(); upconn.close()
         return {"success": True}
     except Exception as e:
         return {"error": str(e)}
+
+
+def post_action_publish(post_id: int) -> dict:
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+    conn.close()
+    if not row:
+        return {"error": "Post not found", "success": False}
+    post = dict(row)
+    if not post.get("image_path") or not post.get("caption"):
+        return {"error": "Incomplete post data (missing image or caption)", "success": False}
+
+    slide_paths_raw = post.get("slide_paths") or "[]"
+    try:
+        slide_paths = json.loads(slide_paths_raw) if isinstance(slide_paths_raw, str) else []
+    except Exception:
+        slide_paths = []
+    slide_paths = [p for p in slide_paths if os.path.exists(p)]
+
+    page = post.get("page", "finpulse")
+    caption = post.get("caption", "")
+
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        if len(slide_paths) >= 2:
+            from instagram import post_carousel_to_instagram
+            article_mock = {"title": "Market Update", "id": post.get("article_id") or 0}
+            result = post_carousel_to_instagram(article_mock, caption, slide_paths, page, dry_run=False)
+        else:
+            from instagram import post_to_instagram
+            article_mock = {"title": "Market Update", "id": post.get("article_id") or 0}
+            result = post_to_instagram(article_mock, caption, post["image_path"], page, dry_run=False)
+
+        if result.get("success"):
+            ig_id = result.get("post_id") or ""
+            upconn = get_connection()
+            upconn.execute(
+                "UPDATE posts SET status='posted', instagram_post_id=?, posted_at=datetime('now') WHERE id=?",
+                (ig_id, post_id)
+            )
+            if post.get("article_id"):
+                upconn.execute("UPDATE articles SET is_posted=1, posted_at=datetime('now') WHERE id=?", (post["article_id"],))
+            upconn.commit()
+            upconn.close()
+            return {"success": True, "instagram_post_id": ig_id, "is_carousel": len(slide_paths) >= 2}
+        else:
+            return {"error": result.get("error", "Instagram post failed"), "success": False}
+    except Exception as e:
+        return {"error": str(e), "success": False}
+
+
+def post_action_delete(post_id: int) -> dict:
+    try:
+        conn = get_connection()
+        conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+        conn.commit()
+        conn.close()
+        return {"success": True}
+    except Exception as e:
+        return {"error": str(e), "success": False}
 
 
 def get_ready_posts():
@@ -740,6 +814,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(generate_market_impact_post())
             except Exception as e:
                 self._json({"error": str(e), "success": False})
+            return
+
+        m_post = re.match(r"^/api/post/(\d+)/(publish|delete)$", path)
+        if m_post:
+            post_id = int(m_post.group(1))
+            post_act = m_post.group(2)
+            if post_act == "publish":
+                self._json(post_action_publish(post_id))
+            elif post_act == "delete":
+                self._json(post_action_delete(post_id))
             return
 
         m = re.match(r"^/api/article/(\d+)/(generate-caption|generate-image|generate-full|post|mark-posted)$", path)

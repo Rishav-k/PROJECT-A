@@ -773,6 +773,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <button class="tn-tab tech" data-seg="techpulse" onclick="filterTopNewsSegment('techpulse',this)">💻 TechPulse (AI & Tech)</button>
         <button class="tn-tab corp" data-seg="corppulse" onclick="filterTopNewsSegment('corppulse',this)">🏢 CorpPulse (Business)</button>
         <button class="tn-tab world" data-seg="worldpulse" onclick="filterTopNewsSegment('worldpulse',this)">🌍 WorldPulse (Global Affairs)</button>
+        <button class="tn-tab q" data-seg="queue" onclick="filterTopNewsSegment('queue',this)" style="margin-left:auto;background:rgba(99,102,241,.15);color:var(--accent);border-color:rgba(99,102,241,.4)">📬 Post Queue (<span id="tn-q-count">0</span>)</button>
       </div>
 
       <!-- Top 5 List Container -->
@@ -1142,6 +1143,55 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
 </div>
 
+<!-- Dedicated Post & Carousel Preview Modal -->
+<div id="pm-backdrop" onclick="pmHandleBackdropClick(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div id="pm-wrap" style="background:var(--s1);border:1px solid var(--border);border-radius:16px;max-width:920px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.7)">
+    <div style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--s2)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:16px;font-weight:800">📱 Post & Carousel Preview</span>
+        <span id="pm-page-badge" class="post-page-tag tag-fin">FINPULSE</span>
+        <span id="pm-slide-badge" class="chip chip-green" style="font-size:10px">5 SLIDES READY</span>
+      </div>
+      <button class="btn btn-d btn-sm" onclick="closePostPreviewModal()">✕ Close</button>
+    </div>
+
+    <div style="padding:20px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <!-- Left: Interactive Carousel Preview -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)">
+          <img id="pm-main-img" src="" alt="Slide Preview" style="width:100%;height:100%;object-fit:contain;cursor:zoom-in" onclick="pmZoomCurrent()">
+          <button onclick="pmPrevSlide()" style="position:absolute;left:10px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">‹</button>
+          <button onclick="pmNextSlide()" style="position:absolute;right:10px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">›</button>
+          <div id="pm-counter" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.75);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700">1 / 5</div>
+        </div>
+
+        <!-- Slide Thumbnails Strip -->
+        <div id="pm-thumb-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px"></div>
+      </div>
+
+      <!-- Right: AI Caption & Actions -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">📝 Instagram Caption</span>
+            <button class="btn btn-d btn-sm" onclick="pmCopyCaption()" style="font-size:11px">📋 Copy Caption</button>
+          </div>
+          <textarea id="pm-caption" style="width:100%;flex:1;min-height:260px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;line-height:1.6;font-family:inherit;resize:none"></textarea>
+        </div>
+
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+          <button id="pm-post-btn" class="btn btn-p" style="padding:10px 18px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="pmPublishCurrentPost()">
+            📸 Post to Instagram Now
+          </button>
+          <button class="btn btn-d" style="font-size:12px" onclick="closePostPreviewModal()">
+            ✓ Keep in Queue
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── STATE ──
 let currentPage = 'home';
@@ -1241,10 +1291,14 @@ function filterTopNewsSegment(seg, btn) {
 }
 
 async function loadTopNews(seg='all') {
+  updateQueueBadge();
   const container = document.getElementById('tn-content-list');
   if (!container) return;
   if (seg === 'market_impact') {
     return loadMarketImpactView(container);
+  }
+  if (seg === 'queue') {
+    return loadQueueView(container);
   }
   container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0">Loading Top 5 Picks…</div>';
   try {
@@ -1385,7 +1439,21 @@ async function tnGenFull(id, btn) {
     toast('✓ Caption & 5-Slide Carousel Generated!', 'var(--green)');
     btn.innerHTML = '✓ Generated';
     if (res) { res.className = 'dsa-result ok'; res.textContent = `✓ Generated via ${data.backend || 'AI'} • ${data.slide_count||5} slides ready!`; }
-    setTimeout(() => loadTopNews(tnCurrentSegment), 1000);
+
+    // Fetch fresh post to get full slide list and open Preview Modal immediately!
+    const art = (tnArticles||[]).find(x => x.id === id) || {id: id, title: 'Top News Post', page: 'finpulse'};
+    openPostPreviewModal({
+      id: data.post_id,
+      article_id: id,
+      title: art.title,
+      page: art.page || 'finpulse',
+      caption: data.caption,
+      image_file: data.image_file,
+      slide_files: data.slide_files && data.slide_files.length ? data.slide_files : [data.image_file]
+    });
+
+    updateQueueBadge();
+    setTimeout(() => loadTopNews(tnCurrentSegment), 1500);
   } catch(e) {
     btn.innerHTML = origText;
     btn.disabled = false;
@@ -1412,12 +1480,301 @@ async function tnPost(id, btn, page) {
     toast('🚀 Posted successfully to Instagram!', 'var(--green)');
     btn.innerHTML = '✅ Posted';
     if (res) { res.className = 'dsa-result ok'; res.textContent = `✓ Published to Instagram (Post ID: ${data.instagram_post_id||'live'})`; }
+    updateQueueBadge();
     setTimeout(() => loadTopNews(tnCurrentSegment), 1500);
   } catch(e) {
     btn.innerHTML = origText;
     btn.disabled = false;
     if (res) { res.className = 'dsa-result err'; res.textContent = `Post failed: ${e.message}`; }
     toast(`Post failed: ${e.message}`, 'var(--red)');
+  }
+}
+
+// ── POST PREVIEW & CAROUSEL MODAL STATE ──
+let currentPreviewPost = null;
+let currentSlideIndex = 0;
+let currentSlideFiles = [];
+
+function openPostPreviewModal(post) {
+  currentPreviewPost = post;
+  currentSlideIndex = 0;
+  currentSlideFiles = post.slide_files || [];
+  if (!currentSlideFiles.length && post.image_file) {
+    currentSlideFiles = [post.image_file];
+  }
+  if (!currentSlideFiles.length && post.slides) {
+    currentSlideFiles = post.slides.map(s => s.split('/').pop());
+  }
+
+  const modal = document.getElementById('pm-backdrop');
+  if (!modal) return;
+
+  const page = post.page || 'finpulse';
+  const pageBadge = document.getElementById('pm-page-badge');
+  if (pageBadge) {
+    pageBadge.className = `post-page-tag ${tagClass(page)}`;
+    pageBadge.textContent = page.toUpperCase();
+  }
+
+  const slideBadge = document.getElementById('pm-slide-badge');
+  if (slideBadge) {
+    slideBadge.textContent = `${currentSlideFiles.length || 1} SLIDES READY`;
+  }
+
+  const captionEl = document.getElementById('pm-caption');
+  if (captionEl) {
+    captionEl.value = post.caption || '';
+  }
+
+  const thumbStrip = document.getElementById('pm-thumb-strip');
+  if (thumbStrip) {
+    thumbStrip.innerHTML = currentSlideFiles.map((sf, idx) => `
+      <img src="/img/${sf}" onclick="pmSetSlide(${idx})"
+           style="width:52px;height:52px;border-radius:6px;object-fit:cover;cursor:pointer;border:2px solid ${idx===0?'var(--accent)':'var(--border)'};transition:all .15s"
+           id="pm-thumb-${idx}" alt="Slide ${idx+1}">
+    `).join('');
+  }
+
+  pmRenderCurrentSlide();
+  modal.style.display = 'flex';
+}
+
+function closePostPreviewModal() {
+  const modal = document.getElementById('pm-backdrop');
+  if (modal) modal.style.display = 'none';
+}
+
+function pmHandleBackdropClick(e) {
+  if (e.target === document.getElementById('pm-backdrop')) {
+    closePostPreviewModal();
+  }
+}
+
+function pmRenderCurrentSlide() {
+  const imgEl = document.getElementById('pm-main-img');
+  const counterEl = document.getElementById('pm-counter');
+  if (!currentSlideFiles.length) {
+    if (imgEl) imgEl.src = '';
+    return;
+  }
+  const file = currentSlideFiles[currentSlideIndex];
+  if (imgEl) imgEl.src = `/img/${file}`;
+  if (counterEl) counterEl.textContent = `${currentSlideIndex + 1} / ${currentSlideFiles.length}`;
+
+  currentSlideFiles.forEach((_, idx) => {
+    const t = document.getElementById(`pm-thumb-${idx}`);
+    if (t) {
+      t.style.borderColor = (idx === currentSlideIndex) ? 'var(--accent)' : 'var(--border)';
+    }
+  });
+}
+
+function pmNextSlide() {
+  if (!currentSlideFiles.length) return;
+  currentSlideIndex = (currentSlideIndex + 1) % currentSlideFiles.length;
+  pmRenderCurrentSlide();
+}
+
+function pmPrevSlide() {
+  if (!currentSlideFiles.length) return;
+  currentSlideIndex = (currentSlideIndex - 1 + currentSlideFiles.length) % currentSlideFiles.length;
+  pmRenderCurrentSlide();
+}
+
+function pmSetSlide(idx) {
+  if (idx >= 0 && idx < currentSlideFiles.length) {
+    currentSlideIndex = idx;
+    pmRenderCurrentSlide();
+  }
+}
+
+function pmZoomCurrent() {
+  if (!currentSlideFiles.length) return;
+  const file = currentSlideFiles[currentSlideIndex];
+  dsOpenLightbox(`/img/${file}`, `Slide ${currentSlideIndex + 1} of ${currentSlideFiles.length}`);
+}
+
+function pmCopyCaption() {
+  const captionEl = document.getElementById('pm-caption');
+  if (!captionEl || !captionEl.value) return;
+  navigator.clipboard.writeText(captionEl.value).then(() => {
+    toast('📋 Caption copied to clipboard!', 'var(--green)');
+  }).catch(() => {
+    captionEl.select();
+    document.execCommand('copy');
+    toast('📋 Caption copied to clipboard!', 'var(--green)');
+  });
+}
+
+async function pmPublishCurrentPost() {
+  if (!currentPreviewPost) return;
+  const btn = document.getElementById('pm-post-btn');
+  const origText = btn ? btn.innerHTML : 'Publish';
+  if (btn) { btn.innerHTML = '⟳ Publishing to Instagram…'; btn.disabled = true; }
+
+  const postId = currentPreviewPost.id || currentPreviewPost.post_id;
+  const artId = currentPreviewPost.article_id;
+
+  try {
+    let res;
+    if (postId) {
+      res = await fetch(`/api/post/${postId}/publish`, {method: 'POST'}).then(r=>r.json());
+    } else if (artId) {
+      res = await fetch(`/api/article/${artId}/post`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({repost: false})
+      }).then(r=>r.json());
+    } else {
+      throw new Error("No post or article ID to publish");
+    }
+
+    if (res.error) throw new Error(res.error);
+    toast('🚀 Successfully published to Instagram!', 'var(--green)');
+    if (btn) btn.innerHTML = '✅ Posted to Instagram';
+    setTimeout(() => {
+      closePostPreviewModal();
+      loadTopNews(tnCurrentSegment);
+      updateQueueBadge();
+    }, 1500);
+  } catch(e) {
+    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+    toast(`Post failed: ${e.message}`, 'var(--red)');
+  }
+}
+
+// ── POST QUEUE VIEW ──
+async function loadQueueView(container) {
+  container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0">Loading Ready & Queued Posts…</div>';
+  try {
+    const data = await fetch('/api/posts?status=pending&limit=40').then(r=>r.json());
+    const queue = data || [];
+    updateQueueBadge(queue.length);
+
+    if (!queue.length) {
+      container.innerHTML = `
+        <div class="card" style="padding:40px 20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:10px">📬</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px">Post Queue is Empty</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:16px">No generated posts currently waiting in queue.</div>
+          <div><button class="btn btn-p" onclick="filterTopNewsSegment('all',document.querySelector('[data-seg=all]'))">🔥 View Top 5 News & Generate Posts</button></div>
+        </div>`;
+      return;
+    }
+
+    let html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:800">📬 ${queue.length} Posts Ready in Queue</div>
+        <div style="font-size:11px;color:var(--muted)">Click any post to preview all slides or publish immediately.</div>
+      </div>
+      <div class="tn-grid">
+    `;
+
+    queue.forEach(p => {
+      const slideFiles = p.slide_files || (p.image_file ? [p.image_file] : []);
+      const coverUrl = p.image_file ? `/img/${p.image_file}` : '';
+
+      let slideThumbStrip = '';
+      if (slideFiles.length > 1) {
+        slideThumbStrip = `<div style="display:flex;gap:6px;margin-top:8px;overflow-x:auto;padding-bottom:2px">` +
+          slideFiles.map((sf, si) => `
+            <img src="/img/${sf}" style="width:46px;height:46px;border-radius:4px;object-fit:cover;cursor:pointer;border:1px solid var(--border)"
+                 title="Slide ${si+1}" onclick="dsOpenLightbox('/img/${sf}','Slide ${si+1}')">
+          `).join('') +
+          `</div>`;
+      }
+
+      const pJson = JSON.stringify(p).replace(/"/g, '&quot;');
+
+      html += `
+        <div class="tn-card" style="border-left:4px solid var(--accent)">
+          <div class="tn-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="post-page-tag ${tagClass(p.page)}">${p.page}</span>
+              <span class="chip chip-green" style="font-size:9px">${slideFiles.length || 1} SLIDES READY</span>
+              <span style="font-size:11px;color:var(--muted)">⏱️ Created ${timeAgo(p.created_at)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">ID: <b>#${p.id}</b></div>
+          </div>
+
+          <div class="tn-card-body">
+            <div class="tn-main-col">
+              <div style="font-size:15px;font-weight:700;color:var(--text)">${esc(p.title || 'Market Update Post')}</div>
+              <div class="tn-summary" style="-webkit-line-clamp:3">${esc(p.caption || 'No caption text')}</div>
+              ${slideThumbStrip}
+            </div>
+            <div class="tn-thumb-col">
+              ${coverUrl ? `<img src="${coverUrl}" class="tn-thumb" style="cursor:pointer" onclick="openPostPreviewModal(${pJson})" alt="cover">` : '<div class="tn-thumb-empty">📰<span>No Slide</span></div>'}
+            </div>
+          </div>
+
+          <div class="tn-card-footer">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-d btn-sm" onclick="openPostPreviewModal(${pJson})">
+                👁️ Open Full Preview & Slides
+              </button>
+            </div>
+            <div class="tn-actions">
+              <button class="tn-btn-post" onclick="publishQueuePost(${p.id},this)">
+                📸 Post to Instagram Now
+              </button>
+              <button class="btn btn-d btn-sm" style="color:var(--red);border-color:rgba(239,68,68,.3)" onclick="deleteQueuePost(${p.id},this)">
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<div class="card" style="padding:20px;color:var(--red)">Failed to load Queue: ${e.message}</div>`;
+  }
+}
+
+async function updateQueueBadge(count) {
+  const badge = document.getElementById('tn-q-count');
+  if (!badge) return;
+  if (count !== undefined) {
+    badge.textContent = count;
+    return;
+  }
+  try {
+    const data = await fetch('/api/posts?status=pending&limit=50').then(r=>r.json());
+    badge.textContent = (data || []).length;
+  } catch(e) {}
+}
+
+async function publishQueuePost(postId, btn) {
+  const origText = btn.innerHTML;
+  btn.innerHTML = '⟳ Posting…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/post/${postId}/publish`, {method:'POST'}).then(r=>r.json());
+    if (res.error) throw new Error(res.error);
+    toast('🚀 Published to Instagram!', 'var(--green)');
+    btn.innerHTML = '✅ Posted';
+    updateQueueBadge();
+    setTimeout(() => loadQueueView(document.getElementById('tn-content-list')), 1000);
+  } catch(e) {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+    toast(`Failed: ${e.message}`, 'var(--red)');
+  }
+}
+
+async function deleteQueuePost(postId, btn) {
+  if (!confirm("Are you sure you want to remove this post from the queue?")) return;
+  try {
+    const res = await fetch(`/api/post/${postId}/delete`, {method:'POST'}).then(r=>r.json());
+    if (res.error) throw new Error(res.error);
+    toast('Post removed from queue', 'var(--yellow)');
+    updateQueueBadge();
+    loadQueueView(document.getElementById('tn-content-list'));
+  } catch(e) {
+    toast(`Failed: ${e.message}`, 'var(--red)');
   }
 }
 
@@ -1547,6 +1904,18 @@ async function generateMarketImpactPost(btn) {
       res.className = 'dsa-result ok';
       res.innerHTML = `✓ Generated ${data.slide_count||5} slides! Cover: <b>${esc(data.image_file||'')}</b>. Ready in queue to post!`;
     }
+
+    // Immediately open the interactive Preview Modal!
+    openPostPreviewModal({
+      id: data.post_id,
+      page: 'finpulse',
+      caption: data.caption,
+      image_file: data.image_file,
+      slides: data.slides || [],
+      slide_files: (data.slides || []).map(s => s.split('/').pop())
+    });
+
+    updateQueueBadge();
   } catch(e) {
     btn.innerHTML = origText;
     btn.disabled = false;
