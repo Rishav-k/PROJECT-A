@@ -42,10 +42,16 @@ python3 .agents/skills/stock-market-impact-analyzer/scripts/market_impact_cli.py
 python3 .agents/skills/stock-market-impact-analyzer/scripts/market_impact_cli.py --analyze
 ```
 
-### 3. Generate Complete 5-Slide Instagram Carousel & Caption
+### 3. Generate Complete 4-Slide Instagram Carousel & Caption
 ```bash
 python3 .agents/skills/stock-market-impact-analyzer/scripts/market_impact_cli.py --generate-post
 ```
+
+**4-Slide Visual Composition**:
+- **Slide 1**: Nifty 50, BSE Sensex, Bank Nifty, and India VIX Movement & Points.
+- **Slide 2**: Nifty Cash Inflows (FII / FPI flow, DII domestic flow, Institutional Net, Retail flow).
+- **Slide 3**: Market Sentiments (Overall sentiment bias, VIX cooling, Sector rotation radar).
+- **Slide 4**: Major Market News (Top breaking stories, catalysts, sources, and links).
 
 ---
 
