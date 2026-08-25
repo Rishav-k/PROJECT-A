@@ -1865,12 +1865,26 @@ async function loadMarketImpactView(container) {
           '</div>';
       }
 
+      let triggerHtml = '';
+      if (s.trigger_title) {
+        triggerHtml = `
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:11px">
+            <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:2px">📰 Triggering News Story:</div>
+            <a href="${s.trigger_url||'#'}" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600;line-height:1.4;display:inline-block">
+              ${esc(s.trigger_title)} ↗
+            </a>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Source: <b>${esc(s.trigger_source||'News')}</b></div>
+          </div>
+        `;
+      }
+
       html += `
         <div class="sector-card">
           <div class="sector-card-header">
             <span class="sector-name">${icon} ${esc(s.sector_name)}</span>
             <span class="sector-badge ${badgeClass}">${imp}</span>
           </div>
+          ${triggerHtml}
           <div class="sector-catalyst"><b>Catalyst:</b> ${esc(s.catalyst)}</div>
           <div style="font-size:11px;color:var(--muted)">Key Stocks in Focus:</div>
           ${tickersHtml}

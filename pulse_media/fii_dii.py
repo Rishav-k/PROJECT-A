@@ -163,10 +163,11 @@ def analyze_sector_impact(articles: Optional[List[Dict[str, Any]]] = None) -> Di
 
     fii_dii = fetch_fii_dii_data()
 
-    # Build news summary context for AI
+    # Build news summary context for AI with explicit indices
     news_context = ""
     for i, a in enumerate(articles[:5], 1):
-        news_context += f"{i}. {a.get('title', '')}\n"
+        news_context += f"Article #{i}: {a.get('title', '')}\n"
+        news_context += f"   Source: {a.get('source_name', 'News')} | URL: {a.get('url', '')}\n"
         if a.get('summary'):
             news_context += f"   Summary: {a.get('summary')[:150]}\n"
 
@@ -192,32 +193,9 @@ Return a valid JSON object matching this EXACT structure (no extra text outside 
       "impact": "BULLISH" or "BEARISH" or "NEUTRAL",
       "impact_score": 85,
       "catalyst": "Specific reason why this sector is impacted by the news",
+      "trigger_article_num": 1,
       "affected_stocks": ["TCS", "INFY"] or ["HDFCBANK", "ICICIBANK"] or ["RELIANCE", "ONGC"] etc.,
       "key_takeaway": "What traders/investors should watch"
-    }},
-    {{
-      "sector_name": "...",
-      "impact": "...",
-      "impact_score": 80,
-      "catalyst": "...",
-      "affected_stocks": ["..."],
-      "key_takeaway": "..."
-    }},
-    {{
-      "sector_name": "...",
-      "impact": "...",
-      "impact_score": 75,
-      "catalyst": "...",
-      "affected_stocks": ["..."],
-      "key_takeaway": "..."
-    }},
-    {{
-      "sector_name": "...",
-      "impact": "...",
-      "impact_score": 70,
-      "catalyst": "...",
-      "affected_stocks": ["..."],
-      "key_takeaway": "..."
     }}
   ],
   "institutional_outlook": "One sentence tactical view on FII/DII positioning",
@@ -252,6 +230,33 @@ Return a valid JSON object matching this EXACT structure (no extra text outside 
     if not analysis or "sectors" not in analysis:
         analysis = _fallback_sector_impact(articles, fii_dii)
 
+    # Attach exact trigger news metadata & links to each sector
+    for s in analysis.get("sectors", []):
+        art_idx = s.get("trigger_article_num", 1) - 1
+        if 0 <= art_idx < len(articles):
+            src_art = articles[art_idx]
+            s["trigger_title"] = src_art.get("title", "")
+            s["trigger_source"] = src_art.get("source_name", "News Source")
+            s["trigger_url"] = src_art.get("url", "")
+        else:
+            # Match by keyword fallback
+            s_name = s.get("sector_name", "").lower()
+            matched_art = None
+            for a in articles:
+                if any(w in a.get("title", "").lower() for w in s_name.split()):
+                    matched_art = a
+                    break
+            if not matched_art and articles:
+                matched_art = articles[0]
+            if matched_art:
+                s["trigger_title"] = matched_art.get("title", "")
+                s["trigger_source"] = matched_art.get("source_name", "News Source")
+                s["trigger_url"] = matched_art.get("url", "")
+
+    analysis["trigger_articles"] = [
+        {"title": a.get("title", ""), "source_name": a.get("source_name", ""), "url": a.get("url", "")}
+        for a in articles[:5]
+    ]
     analysis["fii_dii"] = fii_dii
     analysis["articles_count"] = len(articles)
     analysis["analyzed_at"] = datetime.now(timezone.utc).isoformat()
@@ -259,51 +264,72 @@ Return a valid JSON object matching this EXACT structure (no extra text outside 
 
 
 def _fallback_sector_impact(articles: List[Dict[str, Any]], fii_dii: Dict[str, Any]) -> Dict[str, Any]:
-    """Clean deterministic rule-based sector impact matrix when offline."""
-    # Scan keywords across titles
-    combined_titles = " ".join([a.get("title", "") for a in articles]).lower()
-
+    """Clean deterministic rule-based sector impact matrix with source article mappings."""
     sectors = []
+
+    def find_art(keywords):
+        for a in articles:
+            t = (a.get("title", "") + " " + a.get("summary", "")).lower()
+            if any(k in t for k in keywords):
+                return a
+        return articles[0] if articles else None
+
     # 1. Banking / Financials / Fed / Rates
-    if any(k in combined_titles for k in ["fed", "rate", "yield", "treasury", "bank", "inflation", "warsh"]):
+    art_bank = find_art(["fed", "rate", "yield", "treasury", "bank", "inflation", "warsh"])
+    if art_bank:
         sectors.append({
             "sector_name": "Banking & Financials",
             "impact": "BULLISH" if fii_dii["total_net"] > 0 else "NEUTRAL",
             "impact_score": 88,
             "catalyst": "Central bank policy expectations, Jackson Hole address, and Treasury yield movements.",
+            "trigger_title": art_bank.get("title", ""),
+            "trigger_source": art_bank.get("source_name", "Financial News"),
+            "trigger_url": art_bank.get("url", ""),
             "affected_stocks": ["HDFCBANK", "ICICIBANK", "SBIN", "KOTAKBANK"],
             "key_takeaway": "Rate trajectory directly steering net interest margins and credit growth."
         })
 
     # 2. IT & Tech / AI / Chips
-    if any(k in combined_titles for k in ["nvidia", "tech", "ai", "chip", "nasdaq", "cloud", "software"]):
+    art_tech = find_art(["nvidia", "tech", "ai", "chip", "nasdaq", "cloud", "software"])
+    if art_tech:
         sectors.append({
             "sector_name": "IT & Artificial Intelligence",
             "impact": "BULLISH",
             "impact_score": 92,
             "catalyst": "Nvidia earnings momentum and strong global AI infrastructure spending.",
+            "trigger_title": art_tech.get("title", ""),
+            "trigger_source": art_tech.get("source_name", "Tech News"),
+            "trigger_url": art_tech.get("url", ""),
             "affected_stocks": ["TCS", "INFY", "HCLTECH", "WIPRO", "NVDA"],
             "key_takeaway": "Enterprise AI contracts providing resilient multi-year deal pipelines."
         })
 
     # 3. Energy & Oil / Geopolitics
-    if any(k in combined_titles for k in ["oil", "iran", "energy", "crude", "gas", "sanctions"]):
+    art_energy = find_art(["oil", "iran", "energy", "crude", "gas", "sanctions"])
+    if art_energy:
         sectors.append({
             "sector_name": "Energy & Oil & Gas",
             "impact": "BEARISH",
             "impact_score": 82,
             "catalyst": "Crude oil price adjustments following global geopolitical and sanctions updates.",
+            "trigger_title": art_energy.get("title", ""),
+            "trigger_source": art_energy.get("source_name", "Energy News"),
+            "trigger_url": art_energy.get("url", ""),
             "affected_stocks": ["RELIANCE", "ONGC", "BPCL", "IOC"],
             "key_takeaway": "Lower crude input costs benefit refining margins and paints/chemical user industries."
         })
 
     # 4. Auto & Consumer Discretionary
     if len(sectors) < 4:
+        art_auto = articles[min(3, len(articles)-1)] if articles else None
         sectors.append({
             "sector_name": "Auto & Manufacturing",
             "impact": "BULLISH" if fii_dii["dii"]["net"] > 0 else "NEUTRAL",
             "impact_score": 76,
             "catalyst": "Domestic consumption strength coupled with softening raw material commodity prices.",
+            "trigger_title": art_auto.get("title", "") if art_auto else "Market Demand Update",
+            "trigger_source": art_auto.get("source_name", "Market Desk") if art_auto else "Desk",
+            "trigger_url": art_auto.get("url", "") if art_auto else "",
             "affected_stocks": ["TATAMOTORS", "MARUTI", "M&M", "BAJAJ-AUTO"],
             "key_takeaway": "Festive channel inventory buildup and robust EV adoption supporting volume."
         })
@@ -324,7 +350,7 @@ def _fallback_sector_impact(articles: List[Dict[str, Any]], fii_dii: Dict[str, A
 def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     """
     Generates a full 5-slide visual carousel and AI caption combining
-    FII-DII institutional flows and sector-by-sector news impact.
+    FII-DII institutional flows and sector-by-sector news impact with source links.
     """
     from database.models import get_top_articles
     from database.schema import get_connection
@@ -334,7 +360,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     analysis = analyze_sector_impact(articles)
     fii_dii = analysis["fii_dii"]
 
-    # 1. Create AI Caption
+    # 1. Create AI Caption with triggering news links
     fii_str = fii_dii["fii"]["formatted_net"]
     dii_str = fii_dii["dii"]["formatted_net"]
     total_str = fii_dii["formatted_total_net"]
@@ -349,17 +375,21 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
 ⚡ KEY CATALYST:
 {analysis.get('key_catalyst', 'Major macroeconomic and corporate earnings developments.')}
 
-🔍 SECTORS IN FOCUS & IMPACT:
+🔍 SECTORS IN FOCUS & TRIGGER NEWS:
 """
 
     for s in analysis.get("sectors", []):
         icon = "🟢" if s["impact"] == "BULLISH" else ("🔴" if s["impact"] == "BEARISH" else "🟡")
         stocks_str = ", ".join(s.get("affected_stocks", [])[:4])
         caption += f"\n{icon} {s['sector_name'].upper()} ({s['impact']})\n"
+        if s.get("trigger_title"):
+            caption += f"• Trigger Story: \"{s['trigger_title']}\" ({s.get('trigger_source', 'Source')})\n"
         caption += f"• Catalyst: {s['catalyst']}\n"
         if stocks_str:
             caption += f"• Key Tickers: {stocks_str}\n"
         caption += f"• Action: {s.get('key_takeaway', '')}\n"
+        if s.get("trigger_url"):
+            caption += f"• Source Link: {s['trigger_url']}\n"
 
     caption += f"""
 💡 INSTITUTIONAL OUTLOOK:
@@ -368,6 +398,16 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
 🎯 TACTICAL STRATEGY:
 {analysis.get('tactical_strategy', '')}
 
+📰 SOURCE NEWS & RELATED ARTICLES:
+"""
+
+    for idx, art in enumerate(articles[:5], 1):
+        caption += f"{idx}️⃣ {art.get('title', '')}\n"
+        caption += f"   • Source: {art.get('source_name', 'News')}\n"
+        if art.get("url"):
+            caption += f"   • Link: {art.get('url')}\n"
+
+    caption += """
 💬 Which sector are you most bullish on this week? Drop your top pick below! 👇
 
 #StockMarket #FIIDII #Nifty #Sensex #Investing #Trading #BankNifty #StockAnalysis #MarketUpdate #FinPulse"""
