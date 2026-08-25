@@ -412,147 +412,165 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
 
 #StockMarket #FIIDII #Nifty #Sensex #Investing #Trading #BankNifty #StockAnalysis #MarketUpdate #FinPulse"""
 
-    # 2. Render 5-Slide Visual Carousel via Pillow
+    # 2. Render 5-Slide Visual Carousel via Pillow (4-Color Signature Palette)
+    from carousel import (
+        C_RED, C_ORANGE, C_CREAM, C_TEAL, C_DARK, C_MAROON, C_WHITE, SIZE,
+        _get_font, draw_top_handle, draw_bottom_handle, draw_ribbon_banner,
+        draw_speech_bubble, draw_growth_chart, draw_swipe_arrow, draw_swipe_pill, wrap_text
+    )
+
     output_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "output", "images"))
     os.makedirs(output_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    size = 1080
-    bg_color = (7, 10, 15)
-    accent_color = (0, 212, 170)
-    card_bg = (18, 24, 38)
-    text_white = (255, 255, 255)
-    text_muted = (160, 175, 195)
-    green_color = (34, 197, 94)
-    red_color = (239, 68, 68)
-
-    # Load system font
-    try:
-        font_lg = ImageFont.truetype("/System/Library/Fonts/HelveticaNeue.ttc", 48)
-        font_title = ImageFont.truetype("/System/Library/Fonts/HelveticaNeue.ttc", 36)
-        font_body = ImageFont.truetype("/System/Library/Fonts/HelveticaNeue.ttc", 26)
-        font_sm = ImageFont.truetype("/System/Library/Fonts/HelveticaNeue.ttc", 20)
-    except Exception:
-        font_lg = font_title = font_body = font_sm = ImageFont.load_default()
+    handle = "finpulse.daily"
 
     slides = []
 
-    # ── SLIDE 1: HERO (FII-DII + Market Pulse) ──
-    img1 = Image.new("RGB", (size, size), bg_color)
+    # ── SLIDE 1: HERO (FII-DII & Institutional Radar) — RED #DF301C ──
+    img1 = Image.new("RGB", (SIZE, SIZE), C_RED)
     d1 = ImageDraw.Draw(img1)
-    # Header bar
-    d1.rectangle([(0, 0), (size, 16)], fill=accent_color)
-    d1.text((60, 70), "FINPULSE • MARKET RADAR", fill=accent_color, font=font_sm)
-    d1.text((60, 120), "FII-DII FLOWS &\nSECTOR IMPACT", fill=text_white, font=font_lg)
+    draw_top_handle(d1, handle, C_CREAM)
 
-    # FII Card
-    d1.rounded_rectangle([(60, 300), (500, 520)], radius=16, fill=card_bg, outline=(30, 42, 60))
-    d1.text((90, 330), "FII / FPI FLOW", fill=text_muted, font=font_sm)
-    fii_c = green_color if fii_dii["fii"]["net"] > 0 else red_color
-    d1.text((90, 370), fii_dii["fii"]["formatted_net"], fill=fii_c, font=font_title)
-    d1.text((90, 440), f"Stance: {fii_dii['fii']['bias']}", fill=text_white, font=font_body)
+    d1.text((SIZE // 2, 105), "FII - DII RADAR:", fill=C_CREAM, font=_get_font("impact", 76), anchor="mt")
+    d1.text((SIZE // 2, 190), "INSTITUTIONAL POSITIONING & FLOWS", fill=C_ORANGE, font=_get_font("din_cond", 52), anchor="mt")
 
-    # DII Card
-    d1.rounded_rectangle([(540, 300), (980, 520)], radius=16, fill=card_bg, outline=(30, 42, 60))
-    d1.text((570, 330), "DII (DOMESTIC) FLOW", fill=text_muted, font=font_sm)
-    dii_c = green_color if fii_dii["dii"]["net"] > 0 else red_color
-    d1.text((570, 370), fii_dii["dii"]["formatted_net"], fill=dii_c, font=font_title)
-    d1.text((570, 440), f"Stance: {fii_dii['dii']['bias']}", fill=text_white, font=font_body)
+    # Center Flow Board in Cream #FEF3DC
+    d1.rounded_rectangle([(80, 270), (SIZE - 80, 810)], radius=24, fill=C_CREAM, outline=C_DARK, width=6)
 
-    # Total Net Flow Banner
-    d1.rounded_rectangle([(60, 560), (980, 720)], radius=16, fill=card_bg, outline=accent_color)
-    d1.text((90, 590), "TOTAL INSTITUTIONAL NET INFLOW", fill=accent_color, font=font_sm)
-    tot_c = green_color if fii_dii["total_net"] > 0 else red_color
-    d1.text((90, 630), f"{fii_dii['formatted_total_net']} ({fii_dii['sentiment']})", fill=tot_c, font=font_title)
+    # FII Box
+    fii_clean = fii_dii["fii"]["formatted_net"].replace("₹", "Rs. ")
+    dii_clean = fii_dii["dii"]["formatted_net"].replace("₹", "Rs. ")
+    tot_clean = fii_dii["formatted_total_net"].replace("₹", "Rs. ")
 
-    # Bottom swipe indicator
-    d1.text((60, 960), f"📅 {fii_dii['date']} • Swipe for Sector Breakdown →", fill=text_muted, font=font_body)
+    d1.rounded_rectangle([(115, 305), (515, 520)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
+    d1.text((315, 325), "FII / FPI FLOW", fill=C_MAROON, font=_get_font("din_cond", 36), anchor="mt")
+    d1.text((315, 385), fii_clean, fill=C_RED if fii_dii["fii"]["net"] < 0 else C_DARK, font=_get_font("impact", 46), anchor="mt")
+    d1.text((315, 460), f"Stance: {fii_dii['fii']['bias']}", fill=C_DARK, font=_get_font("din_alt", 22), anchor="mt")
+
+    # DII Box
+    d1.rounded_rectangle([(565, 305), (965, 520)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
+    d1.text((765, 325), "DII (DOMESTIC) FLOW", fill=C_MAROON, font=_get_font("din_cond", 36), anchor="mt")
+    d1.text((765, 385), dii_clean, fill=C_RED if fii_dii["dii"]["net"] < 0 else C_DARK, font=_get_font("impact", 46), anchor="mt")
+    d1.text((765, 460), f"Stance: {fii_dii['dii']['bias']}", fill=C_DARK, font=_get_font("din_alt", 22), anchor="mt")
+
+    # Total Net Banner
+    d1.rounded_rectangle([(115, 550), (965, 765)], radius=16, fill=C_ORANGE, outline=C_DARK, width=4)
+    d1.text((SIZE // 2, 575), "TOTAL INSTITUTIONAL NET BALANCE", fill=C_CREAM, font=_get_font("impact", 36), anchor="mt")
+    d1.text((SIZE // 2, 630), tot_clean, fill=C_WHITE, font=_get_font("impact", 60), anchor="mt")
+    d1.text((SIZE // 2, 715), f"Market Bias: {fii_dii['sentiment']} ({fii_dii['date']})", fill=C_DARK, font=_get_font("din_alt", 24), anchor="mt")
+
+    draw_swipe_arrow(d1, SIZE // 2, 890, C_TEAL)
+    draw_bottom_handle(d1, handle, C_CREAM)
 
     p1 = os.path.join(output_dir, f"market_impact_s1_{ts}.jpg")
     img1.save(p1, "JPEG", quality=95)
     slides.append(p1)
 
-    # ── SLIDE 2: SECTORS IN FOCUS (Matrix) ──
-    img2 = Image.new("RGB", (size, size), bg_color)
+    # ── SLIDE 2: SECTOR SCANNER — CREAM #FEF3DC ──
+    img2 = Image.new("RGB", (SIZE, SIZE), C_CREAM)
     d2 = ImageDraw.Draw(img2)
-    d2.rectangle([(0, 0), (size, 16)], fill=accent_color)
-    d2.text((60, 70), "SECTOR SCANNER", fill=accent_color, font=font_sm)
-    d2.text((60, 110), "Affected Market Segments", fill=text_white, font=font_lg)
+    draw_top_handle(d2, handle, C_RED)
+
+    d2.text((SIZE // 2, 105), "SECTOR SCANNER:", fill=C_RED, font=_get_font("impact", 72), anchor="mt")
+    d2.text((SIZE // 2, 190), "AFFECTED SEGMENTS & NEWS CATALYSTS", fill=C_MAROON, font=_get_font("din_cond", 52), anchor="mt")
+    draw_ribbon_banner(d2, SIZE // 2, 280, 680, 64, C_ORANGE, "BREAKING SECTOR CATALYSTS", C_DARK, _get_font("impact", 34))
 
     sectors_list = analysis.get("sectors", [])[:4]
-    y = 230
+    y = 350
     for s in sectors_list:
-        imp_color = green_color if s["impact"] == "BULLISH" else (red_color if s["impact"] == "BEARISH" else (245, 158, 11))
-        d2.rounded_rectangle([(60, y), (980, y + 145)], radius=14, fill=card_bg, outline=(30, 42, 60))
-        d2.text((90, y + 20), s["sector_name"], fill=text_white, font=font_title)
-        d2.rounded_rectangle([(780, y + 20), (950, y + 60)], radius=8, fill=(imp_color[0], imp_color[1], imp_color[2]))
-        d2.text((800, y + 26), s["impact"], fill=(0, 0, 0), font=font_sm)
-        # Catalyst
-        cat_txt = s["catalyst"][:75] + ("..." if len(s["catalyst"]) > 75 else "")
-        d2.text((90, y + 75), f"Catalyst: {cat_txt}", fill=text_muted, font=font_body)
-        y += 175
+        imp = s.get("impact", "BULLISH")
+        card_col = C_WHITE
+        badge_col = C_RED if imp == "BEARISH" else C_TEAL
 
-    d2.text((60, 960), "Swipe for Stock Tickers & Beneficiaries →", fill=text_muted, font=font_body)
+        d2.rounded_rectangle([(80, y), (SIZE - 80, y + 130)], radius=14, fill=card_col, outline=C_DARK, width=3)
+        d2.text((110, y + 18), s["sector_name"].upper(), fill=C_DARK, font=_get_font("din_cond", 36))
+
+        # Impact Badge
+        d2.rounded_rectangle([(SIZE - 240, y + 16), (SIZE - 110, y + 54)], radius=8, fill=badge_col)
+        d2.text((SIZE - 175, y + 35), imp, fill=C_WHITE if imp=="BEARISH" else C_DARK, font=_get_font("din_alt", 22), anchor="mm")
+
+        # Catalyst text
+        cat_txt = s.get("catalyst", "")[:80] + ("..." if len(s.get("catalyst", "")) > 80 else "")
+        d2.text((110, y + 68), f"Trigger: {cat_txt}", fill=C_MAROON, font=_get_font("body", 22))
+        y += 145
+
+    draw_bottom_handle(d2, handle, C_RED)
     p2 = os.path.join(output_dir, f"market_impact_s2_{ts}.jpg")
     img2.save(p2, "JPEG", quality=95)
     slides.append(p2)
 
-    # ── SLIDE 3: STOCKS TO WATCH ──
-    img3 = Image.new("RGB", (size, size), bg_color)
+    # ── SLIDE 3: STOCKS RADAR — TEAL #3FA9BE ──
+    img3 = Image.new("RGB", (SIZE, SIZE), C_TEAL)
     d3 = ImageDraw.Draw(img3)
-    d3.rectangle([(0, 0), (size, 16)], fill=accent_color)
-    d3.text((60, 70), "STOCK RADAR", fill=accent_color, font=font_sm)
-    d3.text((60, 110), "Key Tickers in Play", fill=text_white, font=font_lg)
+    draw_top_handle(d3, handle, C_CREAM)
 
-    y = 230
+    d3.text((SIZE // 2, 105), "STOCK RADAR:", fill=C_CREAM, font=_get_font("impact", 72), anchor="mt")
+    d3.text((SIZE // 2, 190), "KEY TICKERS IN PLAY", fill=C_CREAM, font=_get_font("din_cond", 52), anchor="mt")
+
+    y = 270
     for s in sectors_list:
-        d3.rounded_rectangle([(60, y), (980, y + 145)], radius=14, fill=card_bg, outline=(30, 42, 60))
-        d3.text((90, y + 20), s["sector_name"], fill=accent_color, font=font_title)
-        stocks_str = "  •  ".join(s.get("affected_stocks", [])[:4])
-        d3.text((90, y + 68), f"Tickers: {stocks_str}", fill=text_white, font=font_body)
+        d3.rounded_rectangle([(80, y), (SIZE - 80, y + 140)], radius=16, fill=C_CREAM, outline=C_DARK, width=4)
+        d3.text((110, y + 16), s["sector_name"].upper(), fill=C_RED, font=_get_font("din_cond", 36))
+        stocks_str = "   •   ".join(s.get("affected_stocks", [])[:4])
+        d3.text((110, y + 60), f"Tickers: {stocks_str}", fill=C_DARK, font=_get_font("impact", 32))
         takeaway_txt = s.get("key_takeaway", "")[:75]
-        d3.text((90, y + 105), takeaway_txt, fill=text_muted, font=font_sm)
-        y += 175
+        d3.text((110, y + 102), f"Action: {takeaway_txt}", fill=C_MAROON, font=_get_font("body", 21))
+        y += 160
 
-    d3.text((60, 960), "Swipe for Tactical Strategy →", fill=text_muted, font=font_body)
+    draw_swipe_pill(d3, SIZE // 2, 930, C_CREAM, C_DARK)
+    draw_bottom_handle(d3, handle, C_CREAM)
     p3 = os.path.join(output_dir, f"market_impact_s3_{ts}.jpg")
     img3.save(p3, "JPEG", quality=95)
     slides.append(p3)
 
-    # ── SLIDE 4: STRATEGY & OUTLOOK ──
-    img4 = Image.new("RGB", (size, size), bg_color)
+    # ── SLIDE 4: STRATEGY SPEECH BUBBLE & CURVE — ORANGE #EF8D32 ──
+    img4 = Image.new("RGB", (SIZE, SIZE), C_ORANGE)
     d4 = ImageDraw.Draw(img4)
-    d4.rectangle([(0, 0), (size, 16)], fill=accent_color)
-    d4.text((60, 70), "INSTITUTIONAL STRATEGY", fill=accent_color, font=font_sm)
-    d4.text((60, 110), "Tactical Market Gameplan", fill=text_white, font=font_lg)
+    draw_top_handle(d4, handle, C_CREAM)
 
-    # Outlook Card
-    d4.rounded_rectangle([(60, 240), (980, 520)], radius=16, fill=card_bg, outline=(30, 42, 60))
-    d4.text((90, 270), "INSTITUTIONAL POSITIONING", fill=accent_color, font=font_sm)
-    d4.text((90, 320), analysis.get("institutional_outlook", ""), fill=text_white, font=font_body)
+    # Speech bubble
+    bubble_box = (80, 115, SIZE - 80, 530)
+    draw_speech_bubble(d4, bubble_box, C_CREAM, C_DARK, width=6)
 
-    # Tactical Card
-    d4.rounded_rectangle([(60, 560), (980, 840)], radius=16, fill=card_bg, outline=accent_color)
-    d4.text((90, 590), "ACTIONABLE TACTICAL STRATEGY", fill=accent_color, font=font_sm)
-    d4.text((90, 640), analysis.get("tactical_strategy", ""), fill=text_white, font=font_body)
+    d4.text((SIZE // 2, 150), "TACTICAL GAMEPLAN", fill=C_RED, font=_get_font("impact", 44), anchor="mt")
+    strat_lines = wrap_text(f"\"{analysis.get('tactical_strategy', 'Accumulate quality leaders on dips.')}\"".upper(), _get_font("impact", 48), 820)[:4]
+    sy = 220
+    for sl in strat_lines:
+        d4.text((SIZE // 2, sy), sl, fill=C_DARK, font=_get_font("impact", 48), anchor="mt")
+        sy += 56
 
-    d4.text((60, 960), "Swipe for Summary →", fill=text_muted, font=font_body)
+    d4.text((SIZE // 2, sy + 15), "— FINPULSE INSTITUTIONAL DESK", fill=C_MAROON, font=_get_font("din_cond", 36), anchor="mt")
+
+    # Chart curve
+    draw_growth_chart(d4, 140, 620, SIZE - 140, 890, C_CREAM, width=7)
+    draw_bottom_handle(d4, handle, C_CREAM)
     p4 = os.path.join(output_dir, f"market_impact_s4_{ts}.jpg")
     img4.save(p4, "JPEG", quality=95)
     slides.append(p4)
 
-    # ── SLIDE 5: CTA / FOLLOW ──
-    img5 = Image.new("RGB", (size, size), bg_color)
+    # ── SLIDE 5: CTA — RED #DF301C ──
+    img5 = Image.new("RGB", (SIZE, SIZE), C_RED)
     d5 = ImageDraw.Draw(img5)
-    d5.rectangle([(0, 0), (size, 16)], fill=accent_color)
-    d5.text((60, 180), "STAY AHEAD OF THE MARKET", fill=accent_color, font=font_sm)
-    d5.text((60, 240), "Daily FII-DII &\nSector Intelligence", fill=text_white, font=font_lg)
+    draw_top_handle(d5, handle, C_CREAM)
 
-    d5.rounded_rectangle([(60, 460), (980, 720)], radius=16, fill=card_bg, outline=accent_color)
-    d5.text((90, 500), "🔔 FOLLOW @FINPULSE.DAILY", fill=accent_color, font=font_title)
-    d5.text((90, 570), "• Real-Time FII/DII Institutional Flows\n• Breaking Stock Sector Analysis\n• Actionable Pre-Market & Post-Market Briefs", fill=text_white, font=font_body)
+    d5.text((SIZE // 2, 105), "STAY AHEAD OF THE MARKET", fill=C_CREAM, font=_get_font("impact", 72), anchor="mt")
+    d5.text((SIZE // 2, 190), "DAILY FII-DII & SECTOR RADAR", fill=C_ORANGE, font=_get_font("din_cond", 52), anchor="mt")
 
-    d5.text((60, 900), "Save this post for reference & share with traders 🚀", fill=text_muted, font=font_body)
+    d5.rounded_rectangle([(80, 270), (SIZE - 80, 600)], radius=24, fill=C_CREAM, outline=C_DARK, width=6)
+    d5.text((120, 310), "INSTITUTIONAL POSITIONING:", fill=C_RED, font=_get_font("impact", 36))
+    out_lines = wrap_text(analysis.get("institutional_outlook", ""), _get_font("body", 26), 800)[:3]
+    oy = 365
+    for ol in out_lines:
+        d5.text((120, oy), ol, fill=C_DARK, font=_get_font("body", 26))
+        oy += 38
+
+    # CTA Box
+    d5.rounded_rectangle([(80, 640), (SIZE - 80, 890)], radius=24, fill=C_ORANGE, outline=C_CREAM, width=5)
+    d5.text((SIZE // 2, 675), "FOLLOW @FINPULSE.DAILY", fill=C_CREAM, font=_get_font("impact", 56), anchor="mt")
+    d5.text((SIZE // 2, 755), "Real-Time Institutional Flows & Sector News", fill=C_DARK, font=_get_font("din_cond", 36), anchor="mt")
+    d5.text((SIZE // 2, 820), "📌 Save this post & share with fellow traders", fill=C_CREAM, font=_get_font("din_alt", 24), anchor="mt")
+
+    draw_bottom_handle(d5, handle, C_CREAM)
     p5 = os.path.join(output_dir, f"market_impact_s5_{ts}.jpg")
     img5.save(p5, "JPEG", quality=95)
     slides.append(p5)
@@ -577,12 +595,15 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     except Exception as e:
         print(f"⚠️ DB post save error: {e}")
 
+    slide_files = [os.path.basename(p) for p in slides]
+
     return {
         "success": True,
         "post_id": post_id,
         "caption": caption,
         "image_file": image_file,
         "slides": slides,
+        "slide_files": slide_files,
         "slide_count": len(slides),
         "analysis": analysis
     }
