@@ -1,7 +1,7 @@
 """
 fii_dii.py — FinPulse Daily Market Intelligence Engine
 Generates high-conviction 4-Slide Instagram Carousels & AI Captions matching the exact structure:
-  • Slide 1: Nifty & Sensex Movement (Live indices, changes, percentages, Bank Nifty & VIX)
+  • Slide 1: Nifty & Sensex Movement (Catchy phrase hook + clean borderless scorecards)
   • Slide 2: Nifty Cash Inflows (FII, DII, Institutional Total, Retail/Pro flows)
   • Slide 3: Market Sentiments (Overall sentiment, VIX cooling, Sector rotation matrix)
   • Slide 4: Major Market News (Top breaking stories, catalysts, sources, and links)
@@ -45,7 +45,6 @@ def fetch_market_indices() -> Dict[str, Any]:
     Fetches live / latest closing data for NIFTY 50, SENSEX, BANK NIFTY, and INDIA VIX.
     Uses Yahoo Finance API with local caching and clean fallback values.
     """
-    # Check cache (15 min)
     if os.path.exists(INDICES_CACHE_FILE):
         try:
             with open(INDICES_CACHE_FILE, "r") as f:
@@ -89,7 +88,6 @@ def fetch_market_indices() -> Dict[str, Any]:
                     "is_positive": chg >= 0
                 }
         except Exception as e:
-            # Fallback
             p = item["default"]
             c = item["def_chg"]
             pct = item["def_pct"]
@@ -378,7 +376,6 @@ def generate_catchy_phrase(nifty: Dict[str, Any], sensex: Dict[str, Any]) -> tup
     pct = nifty.get("change_pct", 0.0)
     n_chg = nifty.get("change", 0.0)
     s_chg = sensex.get("change", 0.0)
-    s_price = sensex.get("price", 0.0)
 
     if pct >= 1.0:
         return ("BULLS ON RAMPAGE!", f"NIFTY SURGES {abs(n_chg):.0f}+ PTS • SENSEX GAINS {abs(s_chg):.0f}+ PTS")
@@ -395,23 +392,22 @@ def generate_catchy_phrase(nifty: Dict[str, Any], sensex: Dict[str, Any]) -> tup
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. 4-SLIDE CAROUSEL & CAPTION GENERATOR
+# 4. 4-SLIDE CAROUSEL & CAPTION GENERATOR (CLEAN, MINIMAL BORDERS)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     """
-    Generates the exact 4-slide carousel & comprehensive AI caption:
-      • Slide 1: Nifty & Sensex Movement (with dynamic catchy phrase)
+    Generates the sleek 4-slide carousel & comprehensive AI caption:
+      • Slide 1: Nifty & Sensex Movement (Catchy hook + clean borderless scorecards)
       • Slide 2: Nifty Cash Inflows (FII, DII, Institutional, Retail)
       • Slide 3: Market Sentiments & Sector Radar
       • Slide 4: Major News & Headlines
     """
-    from database.models import get_top_articles
     from database.schema import get_connection
     from carousel import (
         C_RED, C_ORANGE, C_CREAM, C_TEAL, C_DARK, C_MAROON, C_WHITE, SIZE,
         _get_font, draw_top_handle, draw_bottom_handle, draw_ribbon_banner,
-        draw_speech_bubble, draw_growth_chart, draw_swipe_arrow, draw_swipe_pill, wrap_text
+        draw_swipe_arrow, draw_swipe_pill, wrap_text
     )
 
     articles = get_market_news_articles(limit=5)
@@ -435,7 +431,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
 • NIFTY 50: {nifty_info['formatted_price']} ({nifty_info['formatted_change']})
 • BSE SENSEX: {sensex_info['formatted_price']} ({sensex_info['formatted_change']})
 • BANK NIFTY: {bank_info['formatted_price']} ({bank_info['formatted_change']})
-• INDIA VIX: {vix_info['price']} ({vix_info['formatted_change']} — Volatility Cooling)
+• INDIA VIX: {vix_info['price']:.2f} ({vix_info['formatted_change']} — Volatility Cooling)
 
 💰 2. CASH INFLOWS & INSTITUTIONAL PARTICIPATION ({fii_dii['date']}):
 • FII / FPI Net Flow: {fii_dii['fii']['formatted_net']} ({fii_dii['fii']['bias']})
@@ -479,7 +475,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
 #Nifty #Sensex #StockMarket #FIIDII #BankNifty #Trading #Investing #FinPulse #IndianStockMarket"""
 
     # ─────────────────────────────────────────────
-    # RENDER 4 VISUAL SLIDES VIA PILLOW
+    # RENDER 4 SLEEK, BORDERLESS VISUAL SLIDES
     # ─────────────────────────────────────────────
     output_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "output", "images"))
     os.makedirs(output_dir, exist_ok=True)
@@ -494,43 +490,44 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     d1 = ImageDraw.Draw(img1)
     draw_top_handle(img1, d1, handle, C_CREAM)
 
-    d1.text((SIZE // 2, 105), hook_main, fill=C_CREAM, font=_get_font("impact", 74), anchor="mt")
-    d1.text((SIZE // 2, 190), hook_sub, fill=C_ORANGE, font=_get_font("din_cond", 48), anchor="mt")
+    d1.text((SIZE // 2, 105), hook_main, fill=C_CREAM, font=_get_font("impact", 76), anchor="mt")
+    d1.text((SIZE // 2, 192), hook_sub, fill=C_ORANGE, font=_get_font("din_cond", 48), anchor="mt")
 
-    # Center Scoreboard in Cream #FEF3DC
-    d1.rounded_rectangle([(80, 270), (SIZE - 80, 810)], radius=24, fill=C_CREAM, outline=C_DARK, width=6)
+    # Clean Solid Cream Card (NO BLACK OUTLINES)
+    d1.rounded_rectangle([(70, 265), (SIZE - 70, 830)], radius=28, fill=C_CREAM)
 
-    # NIFTY 50 Box
-    d1.rounded_rectangle([(115, 305), (515, 520)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
-    d1.text((315, 325), "NIFTY 50", fill=C_MAROON, font=_get_font("din_cond", 38), anchor="mt")
-    d1.text((315, 385), nifty_info["formatted_price"], fill=C_DARK, font=_get_font("impact", 50), anchor="mt")
-    # Change Pill
-    d1.rounded_rectangle([(160, 460), (470, 500)], radius=8, fill=C_TEAL if nifty_info["is_positive"] else C_RED)
-    d1.text((315, 480), nifty_info["formatted_change"], fill=C_DARK if nifty_info["is_positive"] else C_WHITE, font=_get_font("din_alt", 22), anchor="mm")
+    # NIFTY 50 (Left)
+    d1.text((310, 310), "NIFTY 50", fill=C_MAROON, font=_get_font("din_cond", 40), anchor="mt")
+    d1.text((310, 370), nifty_info["formatted_price"], fill=C_DARK, font=_get_font("impact", 54), anchor="mt")
+    d1.rounded_rectangle([(160, 455), (460, 500)], radius=20, fill=C_TEAL if nifty_info["is_positive"] else C_RED)
+    d1.text((310, 477), nifty_info["formatted_change"], fill=C_DARK if nifty_info["is_positive"] else C_WHITE, font=_get_font("din_alt", 22), anchor="mm")
 
-    # SENSEX Box
-    d1.rounded_rectangle([(565, 305), (965, 520)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
-    d1.text((765, 325), "BSE SENSEX", fill=C_MAROON, font=_get_font("din_cond", 38), anchor="mt")
-    d1.text((765, 385), sensex_info["formatted_price"], fill=C_DARK, font=_get_font("impact", 50), anchor="mt")
-    # Change Pill
-    d1.rounded_rectangle([(610, 460), (920, 500)], radius=8, fill=C_TEAL if sensex_info["is_positive"] else C_RED)
-    d1.text((765, 480), sensex_info["formatted_change"], fill=C_DARK if sensex_info["is_positive"] else C_WHITE, font=_get_font("din_alt", 22), anchor="mm")
+    # Subtle Divider Line
+    d1.line([(SIZE // 2, 310), (SIZE // 2, 500)], fill=(225, 210, 185), width=2)
 
-    # Secondary Indices Banner (Bank Nifty & India VIX)
-    d1.rounded_rectangle([(115, 550), (965, 660)], radius=14, fill=C_WHITE, outline=C_DARK, width=3)
-    d1.text((315, 570), "BANK NIFTY", fill=C_MAROON, font=_get_font("din_cond", 28), anchor="mt")
-    d1.text((315, 608), f"{bank_info['formatted_price']} ({bank_info['change_pct']:+.2f}%)", fill=C_DARK, font=_get_font("impact", 32), anchor="mt")
+    # SENSEX (Right)
+    d1.text((770, 310), "BSE SENSEX", fill=C_MAROON, font=_get_font("din_cond", 40), anchor="mt")
+    d1.text((770, 370), sensex_info["formatted_price"], fill=C_DARK, font=_get_font("impact", 54), anchor="mt")
+    d1.rounded_rectangle([(620, 455), (920, 500)], radius=20, fill=C_TEAL if sensex_info["is_positive"] else C_RED)
+    d1.text((770, 477), sensex_info["formatted_change"], fill=C_DARK if sensex_info["is_positive"] else C_WHITE, font=_get_font("din_alt", 22), anchor="mm")
 
-    d1.line([(540, 565), (540, 645)], fill=C_DARK, width=2)
+    # Horizontal Divider
+    d1.line([(110, 535), (SIZE - 110, 535)], fill=(225, 210, 185), width=2)
 
-    d1.text((765, 570), "INDIA VIX (VOLATILITY)", fill=C_MAROON, font=_get_font("din_cond", 28), anchor="mt")
-    d1.text((765, 608), f"{vix_info['price']:.2f} ({vix_info['change_pct']:+.2f}%)", fill=C_TEAL if vix_info['change'] <= 0 else C_RED, font=_get_font("impact", 32), anchor="mt")
+    # Secondary Indices Row (Bank Nifty & India VIX)
+    d1.text((310, 565), "BANK NIFTY", fill=C_MAROON, font=_get_font("din_cond", 28), anchor="mt")
+    d1.text((310, 605), f"{bank_info['formatted_price']} ({bank_info['change_pct']:+.2f}%)", fill=C_DARK, font=_get_font("impact", 36), anchor="mt")
 
-    # Day Summary Footer
-    d1.rounded_rectangle([(115, 685), (965, 770)], radius=12, fill=C_ORANGE, outline=C_DARK, width=3)
-    d1.text((SIZE // 2, 725), f"D-STREET ACTION • {hook_main}", fill=C_WHITE, font=_get_font("impact", 32), anchor="mm")
+    d1.line([(SIZE // 2, 560), (SIZE // 2, 655)], fill=(225, 210, 185), width=2)
 
-    draw_swipe_arrow(d1, SIZE // 2, 890, C_TEAL)
+    d1.text((770, 565), "INDIA VIX (VOLATILITY)", fill=C_MAROON, font=_get_font("din_cond", 28), anchor="mt")
+    d1.text((770, 605), f"{vix_info['price']:.2f} ({vix_info['change_pct']:+.2f}%)", fill=C_TEAL if vix_info['change'] <= 0 else C_RED, font=_get_font("impact", 36), anchor="mt")
+
+    # Bottom Solid Tangerine Strip (No Borders)
+    d1.rounded_rectangle([(100, 690), (SIZE - 100, 785)], radius=18, fill=C_ORANGE)
+    d1.text((SIZE // 2, 737), f"D-STREET ACTION • {hook_main}", fill=C_WHITE, font=_get_font("impact", 34), anchor="mm")
+
+    draw_swipe_arrow(d1, SIZE // 2, 900, C_TEAL)
     draw_bottom_handle(d1, handle, C_CREAM)
     p1 = os.path.join(output_dir, f"market_impact_s1_{ts}.jpg")
     img1.save(p1, "JPEG", quality=95)
@@ -547,32 +544,32 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     d2.text((SIZE // 2, 190), "FII, DII & INSTITUTIONAL PARTICIPATION", fill=C_MAROON, font=_get_font("din_cond", 52), anchor="mt")
     draw_ribbon_banner(d2, SIZE // 2, 280, 720, 64, C_ORANGE, f"NSE CASH SEGMENT ACTIVITY ({fii_dii['date']})", C_DARK, _get_font("impact", 32))
 
-    # 4 Segment Cards Grid
     fii_txt = str(fii_dii["fii"]["formatted_net"]).replace("₹", "Rs. ")
     dii_txt = str(fii_dii["dii"]["formatted_net"]).replace("₹", "Rs. ")
     tot_txt = str(fii_dii["formatted_total_net"]).replace("₹", "Rs. ")
 
+    # Clean Solid White Cards (No Black Outlines)
     # Card 1: FII / FPI
-    d2.rounded_rectangle([(80, 345), (515, 560)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
-    d2.text((297, 365), "FII / FPI INFLOW", fill=C_RED, font=_get_font("din_cond", 36), anchor="mt")
-    d2.text((297, 420), fii_txt, fill=C_DARK, font=_get_font("impact", 46), anchor="mt")
-    d2.text((297, 495), f"Stance: {fii_dii['fii']['bias']}", fill=C_MAROON, font=_get_font("din_alt", 22), anchor="mt")
+    d2.rounded_rectangle([(70, 345), (515, 565)], radius=20, fill=C_WHITE)
+    d2.text((292, 370), "FII / FPI INFLOW", fill=C_RED, font=_get_font("din_cond", 38), anchor="mt")
+    d2.text((292, 425), fii_txt, fill=C_DARK, font=_get_font("impact", 48), anchor="mt")
+    d2.text((292, 500), f"Stance: {fii_dii['fii']['bias']}", fill=C_MAROON, font=_get_font("din_alt", 24), anchor="mt")
 
     # Card 2: DII Domestic
-    d2.rounded_rectangle([(565, 345), (1000, 560)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
-    d2.text((782, 365), "DII (DOMESTIC) INFLOW", fill=C_RED, font=_get_font("din_cond", 36), anchor="mt")
-    d2.text((782, 420), dii_txt, fill=C_DARK, font=_get_font("impact", 46), anchor="mt")
-    d2.text((782, 495), f"Stance: {fii_dii['dii']['bias']}", fill=C_MAROON, font=_get_font("din_alt", 22), anchor="mt")
+    d2.rounded_rectangle([(565, 345), (SIZE - 70, 565)], radius=20, fill=C_WHITE)
+    d2.text((787, 370), "DII (DOMESTIC) INFLOW", fill=C_RED, font=_get_font("din_cond", 38), anchor="mt")
+    d2.text((787, 425), dii_txt, fill=C_DARK, font=_get_font("impact", 48), anchor="mt")
+    d2.text((787, 500), f"Stance: {fii_dii['dii']['bias']}", fill=C_MAROON, font=_get_font("din_alt", 24), anchor="mt")
 
     # Card 3: Total Combined
-    d2.rounded_rectangle([(80, 590), (1000, 735)], radius=16, fill=C_WHITE, outline=C_DARK, width=3)
-    d2.text((SIZE // 2, 608), "TOTAL COMBINED INSTITUTIONAL NET", fill=C_RED, font=_get_font("din_cond", 34), anchor="mt")
-    d2.text((SIZE // 2, 650), tot_txt, fill=C_DARK, font=_get_font("impact", 54), anchor="mt")
+    d2.rounded_rectangle([(70, 595), (SIZE - 70, 745)], radius=20, fill=C_WHITE)
+    d2.text((SIZE // 2, 615), "TOTAL COMBINED INSTITUTIONAL NET", fill=C_RED, font=_get_font("din_cond", 36), anchor="mt")
+    d2.text((SIZE // 2, 660), tot_txt, fill=C_DARK, font=_get_font("impact", 56), anchor="mt")
 
     # Card 4: Retail & Pro summary
-    d2.rounded_rectangle([(80, 760), (1000, 890)], radius=14, fill=C_ORANGE, outline=C_DARK, width=3)
-    d2.text((SIZE // 2, 785), "RETAIL & CLIENT FLOWS: HEALTHY ABSORPTION", fill=C_WHITE, font=_get_font("impact", 32), anchor="mt")
-    d2.text((SIZE // 2, 835), "Steady retail participation & long derivative roll-overs into next series", fill=C_DARK, font=_get_font("din_alt", 22), anchor="mt")
+    d2.rounded_rectangle([(70, 775), (SIZE - 70, 895)], radius=18, fill=C_ORANGE)
+    d2.text((SIZE // 2, 802), "RETAIL & CLIENT FLOWS: HEALTHY ABSORPTION", fill=C_WHITE, font=_get_font("impact", 32), anchor="mt")
+    d2.text((SIZE // 2, 850), "Steady retail participation & long derivative roll-overs into next series", fill=C_DARK, font=_get_font("din_alt", 22), anchor="mt")
 
     draw_bottom_handle(d2, handle, C_RED)
     p2 = os.path.join(output_dir, f"market_impact_s2_{ts}.jpg")
@@ -589,28 +586,28 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     d3.text((SIZE // 2, 105), "MARKET SENTIMENTS:", fill=C_CREAM, font=_get_font("impact", 72), anchor="mt")
     d3.text((SIZE // 2, 190), "FEAR, GREED & SECTOR RADAR", fill=C_CREAM, font=_get_font("din_cond", 52), anchor="mt")
 
-    # Sentiment Scorecard Banner
-    d3.rounded_rectangle([(80, 270), (1000, 390)], radius=16, fill=C_CREAM, outline=C_DARK, width=4)
-    d3.text((SIZE // 2, 288), f"OVERALL MARKET SENTIMENT: {analysis.get('market_mood', 'BULLISH').upper()}", fill=C_RED, font=_get_font("impact", 36), anchor="mt")
-    d3.text((SIZE // 2, 340), f"India VIX: {vix_info['price']:.2f} • {analysis.get('vix_interpretation', 'Calm volatility supports rallies')}", fill=C_DARK, font=_get_font("body", 22), anchor="mt")
+    # Clean Solid Cream Top Banner (No Black Outlines)
+    d3.rounded_rectangle([(70, 265), (SIZE - 70, 385)], radius=20, fill=C_CREAM)
+    d3.text((SIZE // 2, 285), f"OVERALL MARKET SENTIMENT: {analysis.get('market_mood', 'BULLISH').upper()}", fill=C_RED, font=_get_font("impact", 36), anchor="mt")
+    d3.text((SIZE // 2, 338), f"India VIX: {vix_info['price']:.2f} • {analysis.get('vix_interpretation', 'Calm volatility supports rallies')}", fill=C_DARK, font=_get_font("body", 22), anchor="mt")
 
-    # Sector Sentiment Cards
+    # Clean Solid Cream Sector Cards (No Borders)
     sectors_list = analysis.get("sectors", [])[:3]
-    sy = 420
+    sy = 415
     for s in sectors_list:
         imp = s.get("impact", "BULLISH")
-        d3.rounded_rectangle([(80, sy), (1000, sy + 145)], radius=16, fill=C_CREAM, outline=C_DARK, width=4)
-        d3.text((110, sy + 18), s["sector_name"].upper(), fill=C_RED, font=_get_font("din_cond", 36))
+        d3.rounded_rectangle([(70, sy), (SIZE - 70, sy + 148)], radius=20, fill=C_CREAM)
+        d3.text((105, sy + 18), s["sector_name"].upper(), fill=C_RED, font=_get_font("din_cond", 36))
 
         # Badge
         badge_col = C_RED if imp == "BEARISH" else C_TEAL
-        d3.rounded_rectangle([(SIZE - 230, sy + 16), (SIZE - 110, sy + 54)], radius=8, fill=badge_col)
-        d3.text((SIZE - 170, sy + 35), imp, fill=C_WHITE if imp=="BEARISH" else C_DARK, font=_get_font("din_alt", 22), anchor="mm")
+        d3.rounded_rectangle([(SIZE - 230, sy + 16), (SIZE - 100, sy + 54)], radius=12, fill=badge_col)
+        d3.text((SIZE - 165, sy + 35), imp, fill=C_WHITE if imp=="BEARISH" else C_DARK, font=_get_font("din_alt", 22), anchor="mm")
 
         stocks_str = "   •   ".join(s.get("affected_stocks", [])[:4])
-        d3.text((110, sy + 62), f"Tickers: {stocks_str}", fill=C_DARK, font=_get_font("impact", 30))
-        d3.text((110, sy + 102), f"Catalyst: {s['catalyst'][:75]}", fill=C_MAROON, font=_get_font("body", 21))
-        sy += 165
+        d3.text((105, sy + 62), f"Tickers: {stocks_str}", fill=C_DARK, font=_get_font("impact", 30))
+        d3.text((105, sy + 104), f"Catalyst: {s['catalyst'][:75]}", fill=C_MAROON, font=_get_font("body", 21))
+        sy += 168
 
     draw_swipe_pill(d3, SIZE // 2, 935, C_CREAM, C_DARK)
     draw_bottom_handle(d3, handle, C_CREAM)
@@ -625,30 +622,30 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     d4 = ImageDraw.Draw(img4)
     draw_top_handle(img4, d4, handle, C_CREAM)
 
-    # Big Card in Cream #FEF3DC
-    d4.rounded_rectangle([(80, 115), (SIZE - 80, 890)], radius=24, fill=C_CREAM, outline=C_DARK, width=6)
+    # Big Clean Solid Cream Card (No Black Outlines)
+    d4.rounded_rectangle([(70, 115), (SIZE - 70, 895)], radius=28, fill=C_CREAM)
     d4.text((SIZE // 2, 145), "MAJOR MARKET NEWS:", fill=C_RED, font=_get_font("impact", 54), anchor="mt")
     d4.text((SIZE // 2, 215), "TOP BREAKING STORIES & CATALYSTS", fill=C_DARK, font=_get_font("din_cond", 40), anchor="mt")
 
-    # Filter out SEC 8-K filings for cleaner news headlines on slide
     filtered_articles = [a for a in articles if not a.get("title", "").startswith("8-K")]
     if len(filtered_articles) < 3:
         filtered_articles = articles
 
     ny = 285
     for idx, art in enumerate(filtered_articles[:3], 1):
-        d4.rounded_rectangle([(110, ny), (SIZE - 110, ny + 155)], radius=14, fill=C_WHITE, outline=C_DARK, width=3)
+        # Clean White Story Card (No Outlines)
+        d4.rounded_rectangle([(100, ny), (SIZE - 100, ny + 155)], radius=18, fill=C_WHITE)
         clean_title = art.get('title', '')
         if len(clean_title) > 65: clean_title = clean_title[:62] + "..."
-        d4.text((130, ny + 15), f"{idx}. {clean_title}", fill=C_DARK, font=_get_font("din_cond", 32))
+        d4.text((125, ny + 16), f"{idx}. {clean_title}", fill=C_DARK, font=_get_font("din_cond", 32))
         sum_txt = art.get('summary', '')[:100] + "..." if art.get('summary') else "Key macroeconomic development impacting broader equities."
-        d4.text((130, ny + 58), sum_txt, fill=C_MAROON, font=_get_font("body", 20))
-        d4.text((130, ny + 112), f"SOURCE: {art.get('source_name', 'News Desk').upper()}", fill=C_DARK, font=_get_font("din_alt", 20))
+        d4.text((125, ny + 58), sum_txt, fill=C_MAROON, font=_get_font("body", 20))
+        d4.text((125, ny + 112), f"SOURCE: {art.get('source_name', 'News Desk').upper()}", fill=C_DARK, font=_get_font("din_alt", 20))
         ny += 175
 
-    # Bottom CTA strip inside card
-    d4.rounded_rectangle([(110, 810), (SIZE - 110, 865)], radius=10, fill=C_ORANGE)
-    d4.text((SIZE // 2, 837), "FOLLOW @FINPULSE.DAILY • READ FULL LINKS IN CAPTION", fill=C_WHITE, font=_get_font("impact", 28), anchor="mm")
+    # Bottom Solid Tangerine CTA Bar
+    d4.rounded_rectangle([(100, 815), (SIZE - 100, 870)], radius=14, fill=C_ORANGE)
+    d4.text((SIZE // 2, 842), "FOLLOW @FINPULSE.DAILY • READ FULL LINKS IN CAPTION", fill=C_WHITE, font=_get_font("impact", 28), anchor="mm")
 
     draw_bottom_handle(d4, handle, C_CREAM)
     p4 = os.path.join(output_dir, f"market_impact_s4_{ts}.jpg")

@@ -150,10 +150,10 @@ def create_news_card(article: Dict[str, Any], page: str = "finpulse") -> Image.I
     draw.text((SIZE // 2, top_offset), h_lead, fill=C_CREAM, font=_get_font("impact", 68), anchor="mt")
     draw.text((SIZE // 2, top_offset + 75), h_sub, fill=C_ORANGE, font=_get_font("din_cond", 48), anchor="mt")
 
-    # 3. Main Center Card in Vintage Cream #FEF3DC
-    card_top = top_offset + 145
-    card_bot = 870
-    draw.rounded_rectangle([(80, card_top), (SIZE - 80, card_bot)], radius=24, fill=C_CREAM, outline=C_DARK, width=6)
+    # 3. Main Center Card in Vintage Cream #FEF3DC (Clean Borderless)
+    card_top = top_offset + 140
+    card_bot = 875
+    draw.rounded_rectangle([(70, card_top), (SIZE - 70, card_bot)], radius=28, fill=C_CREAM)
 
     # Headline inside card
     title = article.get("title", "Breaking Market Intelligence Report")
@@ -175,9 +175,9 @@ def create_news_card(article: Dict[str, Any], page: str = "finpulse") -> Image.I
             draw.text((SIZE // 2, ty), sline, fill=C_MAROON, font=font_body, anchor="mt")
             ty += 34
 
-    # Source & Publisher Badge
+    # Source & Publisher Badge (Clean Solid White, no outline)
     src = article.get("source_name", "Official News Desk")
-    draw.rounded_rectangle([(120, card_bot - 65), (SIZE - 120, card_bot - 18)], radius=10, fill=C_WHITE, outline=C_DARK, width=2)
+    draw.rounded_rectangle([(120, card_bot - 65), (SIZE - 120, card_bot - 18)], radius=12, fill=C_WHITE)
     draw.text((SIZE // 2, card_bot - 42), f"SOURCE: {src.upper()}", fill=C_DARK, font=_get_font("din_alt", 22), anchor="mm")
 
     # 4. Bottom CTA / Swipe Bar
