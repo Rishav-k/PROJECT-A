@@ -1134,6 +1134,24 @@ let activityChart;
 const PAGE_TITLES = {home:'Home',topnews:'🔥 Top 5 News Picks',pipelines:'Pipelines',instagram:'Instagram Manage',datasources:'Data Source Control',sources:'Sources Table',fetcher:'Fetcher — Source Visualizer',logs:'Logs & Errors'};
 
 // ── UTILS ──
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+function openArticleModal(id) {
+  let article = (tnArticles||[]).find(x => x.id === id);
+  if (!article && typeof dsArticles !== 'undefined') {
+    article = dsArticles.find(x => x.id === id);
+  }
+  if (article && typeof dsOpenArticleModal === 'function') {
+    dsOpenArticleModal(article);
+  }
+}
 function toast(msg, color='var(--green)') {
   const el = document.getElementById('toast');
   el.textContent = msg;
