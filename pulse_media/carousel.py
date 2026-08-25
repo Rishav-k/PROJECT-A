@@ -90,11 +90,39 @@ def _get_font(style: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
+ASSETS_DIR = Path(__file__).parent / "assets"
+
+def _load_emblem(target_size: int = 60) -> Optional[Image.Image]:
+    """Loads and resizes the official FinPulse candlestick circular logo emblem."""
+    emblem_path = ASSETS_DIR / "finpulse_emblem_trans.png"
+    if not emblem_path.exists():
+        emblem_path = ASSETS_DIR / "finpulse_logo_trans.png"
+    if emblem_path.exists():
+        try:
+            emb = Image.open(emblem_path).convert("RGBA")
+            emb.thumbnail((target_size, target_size), Image.Resampling.LANCZOS)
+            return emb
+        except Exception:
+            pass
+    return None
+
+
 # ── Helper Vector Graphic Renderers ──────────────────────────────────────────
 
-def draw_top_handle(draw: ImageDraw.ImageDraw, handle: str, color: tuple):
-    font = _get_font("din_alt", 26)
-    draw.text((SIZE // 2, 45), handle, fill=color, font=font, anchor="mt")
+def draw_top_handle(im: Image.Image, draw: ImageDraw.ImageDraw, handle: str, color: tuple, show_logo: bool = True):
+    font = _get_font("din_alt", 28)
+    if show_logo:
+        emblem = _load_emblem(64)
+        if emblem:
+            ew, eh = emblem.size
+            bbox = font.getbbox(handle)
+            tw = bbox[2] - bbox[0]
+            total_w = ew + 14 + tw
+            start_x = (SIZE - total_w) // 2
+            im.paste(emblem, (start_x, 26), emblem)
+            draw.text((start_x + ew + 14, 40), handle, fill=color, font=font, anchor="lt")
+            return
+    draw.text((SIZE // 2, 42), handle, fill=color, font=font, anchor="mt")
 
 
 def draw_bottom_handle(draw: ImageDraw.ImageDraw, handle: str, color: tuple):
@@ -203,7 +231,7 @@ def create_slide_1_hero(article: Dict[str, Any], page: str) -> Image.Image:
     im = Image.new("RGB", (SIZE, SIZE), C_RED)
     draw = ImageDraw.Draw(im)
     handle = PAGE_HANDLES.get(page, "finpulse.daily")
-    draw_top_handle(draw, handle, C_CREAM)
+    draw_top_handle(im, draw, handle, C_CREAM)
 
     h_lead, h_sub = PAGE_TITLES.get(page, ("MARKET PULSE:", "BREAKING INTELLIGENCE"))
     font_lead = _get_font("impact", 76)
@@ -250,7 +278,7 @@ def create_slide_2_breakdown(article: Dict[str, Any], page: str, caption_data: D
     im = Image.new("RGB", (SIZE, SIZE), C_CREAM)
     draw = ImageDraw.Draw(im)
     handle = PAGE_HANDLES.get(page, "finpulse.daily")
-    draw_top_handle(draw, handle, C_RED)
+    draw_top_handle(im, draw, handle, C_RED)
 
     font_head = _get_font("impact", 72)
     font_sub  = _get_font("din_cond", 52)
@@ -293,7 +321,7 @@ def create_slide_3_pros_cons(article: Dict[str, Any], page: str, caption_data: D
     im = Image.new("RGB", (SIZE, SIZE), C_TEAL)
     draw = ImageDraw.Draw(im)
     handle = PAGE_HANDLES.get(page, "finpulse.daily")
-    draw_top_handle(draw, handle, C_CREAM)
+    draw_top_handle(im, draw, handle, C_CREAM)
 
     font_head = _get_font("impact", 72)
     font_sub  = _get_font("din_cond", 52)
@@ -340,7 +368,7 @@ def create_slide_4_quote(article: Dict[str, Any], page: str, caption_data: Dict[
     im = Image.new("RGB", (SIZE, SIZE), C_ORANGE)
     draw = ImageDraw.Draw(im)
     handle = PAGE_HANDLES.get(page, "finpulse.daily")
-    draw_top_handle(draw, handle, C_CREAM)
+    draw_top_handle(im, draw, handle, C_CREAM)
 
     font_quote = _get_font("impact", 54)
     font_author = _get_font("din_cond", 40)
@@ -371,7 +399,7 @@ def create_slide_5_cta(article: Dict[str, Any], page: str, caption_data: Dict[st
     im = Image.new("RGB", (SIZE, SIZE), C_RED)
     draw = ImageDraw.Draw(im)
     handle = PAGE_HANDLES.get(page, "finpulse.daily")
-    draw_top_handle(draw, handle, C_CREAM)
+    draw_top_handle(im, draw, handle, C_CREAM)
 
     font_head = _get_font("impact", 72)
     font_sub  = _get_font("din_cond", 52)

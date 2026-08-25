@@ -429,7 +429,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     # ── SLIDE 1: HERO (FII-DII & Institutional Radar) — RED #DF301C ──
     img1 = Image.new("RGB", (SIZE, SIZE), C_RED)
     d1 = ImageDraw.Draw(img1)
-    draw_top_handle(d1, handle, C_CREAM)
+    draw_top_handle(img1, d1, handle, C_CREAM)
 
     d1.text((SIZE // 2, 105), "FII - DII RADAR:", fill=C_CREAM, font=_get_font("impact", 76), anchor="mt")
     d1.text((SIZE // 2, 190), "INSTITUTIONAL POSITIONING & FLOWS", fill=C_ORANGE, font=_get_font("din_cond", 52), anchor="mt")
@@ -469,7 +469,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     # ── SLIDE 2: SECTOR SCANNER — CREAM #FEF3DC ──
     img2 = Image.new("RGB", (SIZE, SIZE), C_CREAM)
     d2 = ImageDraw.Draw(img2)
-    draw_top_handle(d2, handle, C_RED)
+    draw_top_handle(img2, d2, handle, C_RED)
 
     d2.text((SIZE // 2, 105), "SECTOR SCANNER:", fill=C_RED, font=_get_font("impact", 72), anchor="mt")
     d2.text((SIZE // 2, 190), "AFFECTED SEGMENTS & NEWS CATALYSTS", fill=C_MAROON, font=_get_font("din_cond", 52), anchor="mt")
@@ -502,7 +502,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     # ── SLIDE 3: STOCKS RADAR — TEAL #3FA9BE ──
     img3 = Image.new("RGB", (SIZE, SIZE), C_TEAL)
     d3 = ImageDraw.Draw(img3)
-    draw_top_handle(d3, handle, C_CREAM)
+    draw_top_handle(img3, d3, handle, C_CREAM)
 
     d3.text((SIZE // 2, 105), "STOCK RADAR:", fill=C_CREAM, font=_get_font("impact", 72), anchor="mt")
     d3.text((SIZE // 2, 190), "KEY TICKERS IN PLAY", fill=C_CREAM, font=_get_font("din_cond", 52), anchor="mt")
@@ -526,7 +526,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     # ── SLIDE 4: STRATEGY SPEECH BUBBLE & CURVE — ORANGE #EF8D32 ──
     img4 = Image.new("RGB", (SIZE, SIZE), C_ORANGE)
     d4 = ImageDraw.Draw(img4)
-    draw_top_handle(d4, handle, C_CREAM)
+    draw_top_handle(img4, d4, handle, C_CREAM)
 
     # Speech bubble
     bubble_box = (80, 115, SIZE - 80, 530)
@@ -551,7 +551,7 @@ def generate_market_impact_post(page: str = "finpulse") -> Dict[str, Any]:
     # ── SLIDE 5: CTA — RED #DF301C ──
     img5 = Image.new("RGB", (SIZE, SIZE), C_RED)
     d5 = ImageDraw.Draw(img5)
-    draw_top_handle(d5, handle, C_CREAM)
+    draw_top_handle(img5, d5, handle, C_CREAM)
 
     d5.text((SIZE // 2, 105), "STAY AHEAD OF THE MARKET", fill=C_CREAM, font=_get_font("impact", 72), anchor="mt")
     d5.text((SIZE // 2, 190), "DAILY FII-DII & SECTOR RADAR", fill=C_ORANGE, font=_get_font("din_cond", 52), anchor="mt")

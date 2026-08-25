@@ -938,6 +938,33 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(fetch_article_content_data(art_id))
             except Exception as e:
                 self._json({"error": str(e)})
+        elif path.startswith("/output/images/"):
+            fname = os.path.basename(path)
+            self._image(fname)
+        elif path.startswith("/assets/"):
+            fname = os.path.basename(path)
+            p = os.path.join(os.path.dirname(__file__), "..", "assets", fname)
+            if os.path.exists(p):
+                ct = "image/png" if p.endswith(".png") else ("image/jpeg" if p.endswith((".jpg",".jpeg")) else "application/octet-stream")
+                with open(p, "rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", ct)
+                self.send_header("Cache-Control", "public,max-age=86400")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_error(404)
+        elif path == "/favicon.ico":
+            p = os.path.join(os.path.dirname(__file__), "..", "assets", "finpulse_emblem_trans.png")
+            if os.path.exists(p):
+                with open(p, "rb") as f: body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_error(404)
         elif path.startswith("/img/"):
             self._image(path[5:])
         else:
