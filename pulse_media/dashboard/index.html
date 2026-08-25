@@ -499,6 +499,26 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .tn-btn-gen:hover{opacity:.9}
 .tn-btn-post{background:var(--green);color:#000;font-weight:700;font-size:11px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;transition:opacity .15s}
 .tn-btn-post:hover{opacity:.9}
+
+/* ── FII / DII & SECTOR IMPACT WIDGETS ── */
+.tn-tab.mi{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}
+.fii-dii-banner{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+.fii-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+.fii-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.fii-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.fii-val{font-size:24px;font-weight:800;line-height:1.2;margin-bottom:4px}
+.fii-sub{font-size:11px;color:var(--muted)}
+.sector-impact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:20px}
+.sector-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.sector-card-header{display:flex;align-items:center;justify-content:space-between}
+.sector-name{font-size:14px;font-weight:700;color:var(--text)}
+.sector-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:4px;letter-spacing:.5px}
+.badge-bull{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.4)}
+.badge-bear{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.4)}
+.badge-neut{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.4)}
+.sector-catalyst{font-size:12px;color:var(--text);line-height:1.5}
+.ticker-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.ticker-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--s2);color:var(--accent);border:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -748,6 +768,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <!-- Segment Selector Tabs -->
       <div class="tn-segment-tabs" id="tn-tabs">
         <button class="tn-tab active" data-seg="all" onclick="filterTopNewsSegment('all',this)">🔥 All Segments</button>
+        <button class="tn-tab mi" data-seg="market_impact" onclick="filterTopNewsSegment('market_impact',this)">📊 Market Impact & FII-DII</button>
         <button class="tn-tab fin" data-seg="finpulse" onclick="filterTopNewsSegment('finpulse',this)">💹 FinPulse (Markets)</button>
         <button class="tn-tab tech" data-seg="techpulse" onclick="filterTopNewsSegment('techpulse',this)">💻 TechPulse (AI & Tech)</button>
         <button class="tn-tab corp" data-seg="corppulse" onclick="filterTopNewsSegment('corppulse',this)">🏢 CorpPulse (Business)</button>
@@ -1222,6 +1243,9 @@ function filterTopNewsSegment(seg, btn) {
 async function loadTopNews(seg='all') {
   const container = document.getElementById('tn-content-list');
   if (!container) return;
+  if (seg === 'market_impact') {
+    return loadMarketImpactView(container);
+  }
   container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0">Loading Top 5 Picks…</div>';
   try {
     const data = await fetch(`/api/top-news?page=${seg}&limit=5`).then(r=>r.json());
@@ -1394,6 +1418,140 @@ async function tnPost(id, btn, page) {
     btn.disabled = false;
     if (res) { res.className = 'dsa-result err'; res.textContent = `Post failed: ${e.message}`; }
     toast(`Post failed: ${e.message}`, 'var(--red)');
+  }
+}
+
+// ── MARKET IMPACT & FII-DII VIEW ──
+async function loadMarketImpactView(container) {
+  container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0">Fetching FII/DII Institutional Flows & AI Sector Impact…</div>';
+  try {
+    const data = await fetch('/api/market-impact').then(r=>r.json());
+    const fii = data.fii_dii || {};
+    const fiiInfo = fii.fii || {};
+    const diiInfo = fii.dii || {};
+
+    const fiiColor = (fiiInfo.net > 0) ? 'var(--green)' : 'var(--red)';
+    const diiColor = (diiInfo.net > 0) ? 'var(--green)' : 'var(--red)';
+    const totalColor = (fii.total_net > 0) ? 'var(--green)' : 'var(--red)';
+
+    let html = `
+      <!-- 1. FII / DII Institutional Flow Banner -->
+      <div class="fii-dii-banner">
+        <div class="fii-card">
+          <div class="fii-card-top">
+            <span class="fii-label">💼 FII / FPI FLOW</span>
+            <span class="post-page-tag ${fiiInfo.net > 0 ? 'tag-fin' : 'tag-world'}">${fiiInfo.bias || 'FLOW'}</span>
+          </div>
+          <div class="fii-val" style="color:${fiiColor}">${fiiInfo.formatted_net || '—'}</div>
+          <div class="fii-sub">Buy: ₹${Number(fiiInfo.buy||0).toLocaleString('en-IN')} Cr • Sell: ₹${Number(fiiInfo.sell||0).toLocaleString('en-IN')} Cr</div>
+        </div>
+
+        <div class="fii-card">
+          <div class="fii-card-top">
+            <span class="fii-label">🏦 DII (DOMESTIC) FLOW</span>
+            <span class="post-page-tag ${diiInfo.net > 0 ? 'tag-fin' : 'tag-world'}">${diiInfo.bias || 'FLOW'}</span>
+          </div>
+          <div class="fii-val" style="color:${diiColor}">${diiInfo.formatted_net || '—'}</div>
+          <div class="fii-sub">Buy: ₹${Number(diiInfo.buy||0).toLocaleString('en-IN')} Cr • Sell: ₹${Number(diiInfo.sell||0).toLocaleString('en-IN')} Cr</div>
+        </div>
+
+        <div class="fii-card" style="border-color:rgba(99,102,241,.5)">
+          <div class="fii-card-top">
+            <span class="fii-label">⚖️ TOTAL INSTITUTIONAL NET</span>
+            <span class="chip chip-green" style="font-size:9px">${fii.source || 'NSE'}</span>
+          </div>
+          <div class="fii-val" style="color:${totalColor}">${fii.formatted_total_net || '—'}</div>
+          <div class="fii-sub">Institutional Bias: <b>${fii.sentiment || 'NEUTRAL'}</b> (${fii.date || ''})</div>
+        </div>
+      </div>
+
+      <!-- 2. AI Market Mood & Catalyst -->
+      <div class="card mb" style="padding:16px 20px;background:var(--s2);border-left:4px solid var(--accent)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);text-transform:uppercase">AI MARKET INTELLIGENCE</div>
+          <div style="font-size:11px;color:var(--muted)">Market Mood: <b style="color:var(--text)">${esc(data.market_mood || 'Analyzing')}</b></div>
+        </div>
+        <div style="font-size:14px;font-weight:700;line-height:1.4;margin-bottom:6px">⚡ Catalyst: ${esc(data.key_catalyst || 'Macroeconomic flows driving broad market direction.')}</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">Tactical View: ${esc(data.tactical_strategy || '')}</div>
+      </div>
+
+      <!-- 3. Generator CTA -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 18px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:13px;font-weight:700">🎨 Create Market Impact & FII-DII Instagram Post</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Generates ready-to-publish 5-slide visual carousel and AI analysis caption.</div>
+        </div>
+        <div>
+          <button class="tn-btn-gen" style="font-size:12px;padding:8px 16px" onclick="generateMarketImpactPost(this)">
+            ✦ 1-Click Generate Market Impact Post
+          </button>
+        </div>
+      </div>
+      <div class="dsa-result" id="mi-gen-result" style="margin-bottom:14px"></div>
+
+      <!-- 4. Sector Impact Cards Grid -->
+      <div style="font-size:14px;font-weight:800;letter-spacing:-.2px;color:var(--text);margin:20px 0 12px">
+        🔍 Affected Sectors & Key Stocks Matrix
+      </div>
+      <div class="sector-impact-grid">
+    `;
+
+    (data.sectors || []).forEach(s => {
+      const imp = s.impact || 'NEUTRAL';
+      const badgeClass = (imp === 'BULLISH') ? 'badge-bull' : ((imp === 'BEARISH') ? 'badge-bear' : 'badge-neut');
+      const icon = (imp === 'BULLISH') ? '🟢' : ((imp === 'BEARISH') ? '🔴' : '🟡');
+
+      let tickersHtml = '';
+      if (s.affected_stocks && s.affected_stocks.length) {
+        tickersHtml = '<div class="ticker-chip-row">' +
+          s.affected_stocks.map(tk => `<span class="ticker-chip">${esc(tk)}</span>`).join('') +
+          '</div>';
+      }
+
+      html += `
+        <div class="sector-card">
+          <div class="sector-card-header">
+            <span class="sector-name">${icon} ${esc(s.sector_name)}</span>
+            <span class="sector-badge ${badgeClass}">${imp}</span>
+          </div>
+          <div class="sector-catalyst"><b>Catalyst:</b> ${esc(s.catalyst)}</div>
+          <div style="font-size:11px;color:var(--muted)">Key Stocks in Focus:</div>
+          ${tickersHtml}
+          <div style="font-size:11px;color:#a0aec0;margin-top:auto;padding-top:6px;border-top:1px dashed var(--border)">
+            💡 <i>${esc(s.key_takeaway || '')}</i>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<div class="card" style="padding:20px;color:var(--red)">Failed to load Market Impact data: ${e.message}</div>`;
+  }
+}
+
+async function generateMarketImpactPost(btn) {
+  const origText = btn.innerHTML;
+  btn.innerHTML = '⟳ Generating 5 Slides…';
+  btn.disabled = true;
+  const res = document.getElementById('mi-gen-result');
+  if (res) { res.className = 'dsa-result'; res.textContent = 'Rendering 5-slide visual carousel & creating AI caption…'; }
+
+  try {
+    const data = await fetch('/api/market-impact/generate-post', {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast('✓ 5-Slide Market Impact Carousel Generated!', 'var(--green)');
+    btn.innerHTML = '✓ Generated Ready';
+    if (res) {
+      res.className = 'dsa-result ok';
+      res.innerHTML = `✓ Generated ${data.slide_count||5} slides! Cover: <b>${esc(data.image_file||'')}</b>. Ready in queue to post!`;
+    }
+  } catch(e) {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+    if (res) { res.className = 'dsa-result err'; res.textContent = `Error: ${e.message}`; }
+    toast(`Failed: ${e.message}`, 'var(--red)');
   }
 }
 

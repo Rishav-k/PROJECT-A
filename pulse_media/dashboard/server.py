@@ -733,6 +733,15 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             body = {}
 
+        if path == "/api/market-impact/generate-post":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from fii_dii import generate_market_impact_post
+                self._json(generate_market_impact_post())
+            except Exception as e:
+                self._json({"error": str(e), "success": False})
+            return
+
         m = re.match(r"^/api/article/(\d+)/(generate-caption|generate-image|generate-full|post|mark-posted)$", path)
         if not m:
             self.send_error(404); return
@@ -782,6 +791,20 @@ class Handler(BaseHTTPRequestHandler):
             page = qp("page", "all")
             limit = int(qp("limit", 5))
             self._json(get_top_news_data(page=page, limit=limit))
+        elif path == "/api/fii-dii":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from fii_dii import fetch_fii_dii_data
+                self._json(fetch_fii_dii_data())
+            except Exception as e:
+                self._json({"error": str(e)})
+        elif path == "/api/market-impact":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from fii_dii import analyze_sector_impact
+                self._json(analyze_sector_impact())
+            except Exception as e:
+                self._json({"error": str(e)})
         elif path.startswith("/api/trigger/"):
             page = path.split("/")[-1]
             self._trigger(page, qp("dry","0")=="1")
