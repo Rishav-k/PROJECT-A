@@ -246,9 +246,77 @@ def get_source_articles_data(source_name: str, limit: int = 80):
             else:
                 if os.path.exists(sp):
                     slide_files.append(fname)
+    return {"items": articles, "source": source_name}
+
+
+def get_top_news_data(page: str = "all", limit: int = 5):
+    """Return top ranked news articles across segments or for a specific page."""
+    try:
+        from database.models import get_top_news_across_segments
+        articles = get_top_news_across_segments(page, limit)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+    now = datetime.now(timezone.utc)
+    for a in articles:
+        is_posted = (a.get("post_status") == "posted") or (a.get("is_posted") == 1)
+        if is_posted:
+            a["pipeline_stage"] = "posted"
+            pa = a.get("post_published_at") or a.get("posted_at") or ""
+            try:
+                dt = datetime.fromisoformat(pa.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                age_days = (now - dt).total_seconds() / 86400
+            except Exception:
+                age_days = 0
+            a["show_likes"]  = age_days >= 1
+        elif a.get("image_path"):
+            a["pipeline_stage"] = "image_ready"
+            a["show_likes"] = False
+        elif a.get("caption"):
+            a["pipeline_stage"] = "captioned"
+            a["show_likes"] = False
+        elif a.get("post_id"):
+            a["pipeline_stage"] = "creating"
+            a["show_likes"] = False
+        else:
+            a["pipeline_stage"] = "fetched"
+            a["show_likes"] = False
+
+        # Image file
+        if a.get("image_path"):
+            stem = os.path.basename(a["image_path"]).replace("_clean.jpg","").replace(".jpg","").replace(".png","")
+            for ext in ("_clean.jpg", ".jpg", ".png"):
+                candidate = stem + ext
+                if os.path.exists(os.path.join(IMAGES_DIR, candidate)):
+                    a["image_file"] = candidate
+                    break
+            else:
+                a["image_file"] = os.path.basename(a["image_path"])
+        else:
+            a["image_file"] = None
+
+        raw_sp = a.get("slide_paths", "[]") or "[]"
+        try:
+            sp_paths = json.loads(raw_sp) if isinstance(raw_sp, str) else []
+        except Exception:
+            sp_paths = []
+        slide_files = []
+        for sp in sp_paths:
+            fname = os.path.basename(sp)
+            stem2 = fname.replace("_clean.jpg","").replace(".jpg","")
+            for ext in ("_clean.jpg", ".jpg"):
+                c = stem2 + ext
+                if os.path.exists(os.path.join(IMAGES_DIR, c)):
+                    slide_files.append(c)
+                    break
+            else:
+                if os.path.exists(sp):
+                    slide_files.append(fname)
         a["slide_files"] = slide_files
 
-    return {"items": articles, "source": source_name}
+    return {"items": articles, "page": page, "count": len(articles)}
 
 
 def get_workers():
@@ -492,6 +560,23 @@ def article_action_post(article_id: int, repost: bool = False) -> dict:
         return {"error": str(e), "success": False}
 
 
+def article_action_generate_full(article_id: int) -> dict:
+    """Generate both caption and 5-slide carousel on demand for an article."""
+    cap_res = article_action_generate_caption(article_id)
+    if not cap_res.get("success"):
+        return {"error": cap_res.get("error", "Caption generation failed"), "success": False}
+    img_res = article_action_generate_image(article_id)
+    return {
+        "success": img_res.get("success", False),
+        "caption": cap_res.get("caption"),
+        "backend": cap_res.get("backend"),
+        "post_id": img_res.get("post_id"),
+        "image_file": img_res.get("image_file"),
+        "slide_count": img_res.get("slide_count", 0),
+        "error": img_res.get("error"),
+    }
+
+
 def article_action_mark_posted(article_id: int) -> dict:
     try:
         upconn = get_connection()
@@ -648,7 +733,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             body = {}
 
-        m = re.match(r"^/api/article/(\d+)/(generate-caption|generate-image|post|mark-posted)$", path)
+        m = re.match(r"^/api/article/(\d+)/(generate-caption|generate-image|generate-full|post|mark-posted)$", path)
         if not m:
             self.send_error(404); return
         article_id = int(m.group(1))
@@ -658,6 +743,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(article_action_generate_caption(article_id))
         elif action == "generate-image":
             self._json(article_action_generate_image(article_id))
+        elif action == "generate-full":
+            self._json(article_action_generate_full(article_id))
         elif action == "post":
             repost = bool(body.get("repost", False))
             self._json(article_action_post(article_id, repost=repost))
@@ -691,6 +778,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json(get_activity())
         elif path == "/api/schedule":
             self._json({"next": get_next_schedule()})
+        elif path == "/api/top-news":
+            page = qp("page", "all")
+            limit = int(qp("limit", 5))
+            self._json(get_top_news_data(page=page, limit=limit))
         elif path.startswith("/api/trigger/"):
             page = path.split("/")[-1]
             self._trigger(page, qp("dry","0")=="1")

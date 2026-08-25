@@ -180,6 +180,64 @@ def get_source_articles(source_display_name: str, limit: int = 80) -> list[dict]
     return result
 
 
+def get_top_news_across_segments(page: str = None, limit: int = 5) -> list[dict]:
+    """
+    Return top-scoring articles (with post metadata) either for a specific page
+    or top N across each segment.
+    """
+    conn = get_connection()
+    art_cols   = {row[1] for row in conn.execute("PRAGMA table_info(articles)").fetchall()}
+    posts_cols = {row[1] for row in conn.execute("PRAGMA table_info(posts)").fetchall()}
+
+    img_url_col    = "a.image_url"    if "image_url"    in art_cols   else "'' AS image_url"
+    img_urls_col   = "a.image_urls"   if "image_urls"   in art_cols   else "NULL AS image_urls"
+    art_body_col   = "a.article_body" if "article_body" in art_cols  else "'' AS article_body"
+    slide_paths_col = ("COALESCE(p.slide_paths, '[]') AS slide_paths"
+                       if "slide_paths" in posts_cols else "'[]' AS slide_paths")
+
+    query = f"""
+        SELECT
+            a.id, a.title, a.summary, a.url, a.source_name, a.page,
+            a.category, a.score, a.published_at, a.fetched_at,
+            a.is_posted, a.posted_at,
+            {img_url_col}, {img_urls_col}, {art_body_col},
+            p.id          AS post_id,
+            p.status      AS post_status,
+            p.caption,
+            p.image_path,
+            p.instagram_post_id,
+            p.likes,
+            p.comments,
+            p.created_at  AS post_created,
+            p.posted_at   AS post_published_at,
+            {slide_paths_col}
+        FROM articles a
+        LEFT JOIN posts p ON p.article_id = a.id
+    """
+
+    if page and page != "all":
+        rows = conn.execute(query + " WHERE a.page = ? ORDER BY a.score DESC, a.fetched_at DESC LIMIT ?",
+                            (page, limit)).fetchall()
+        articles = [dict(r) for r in rows]
+    else:
+        articles = []
+        for pg in ("finpulse", "techpulse", "corppulse", "worldpulse"):
+            rows = conn.execute(query + " WHERE a.page = ? ORDER BY a.score DESC, a.fetched_at DESC LIMIT ?",
+                                (pg, limit)).fetchall()
+            articles.extend([dict(r) for r in rows])
+
+    conn.close()
+    for d in articles:
+        if isinstance(d.get("image_urls"), str):
+            try:
+                d["image_urls"] = json.loads(d["image_urls"])
+            except Exception:
+                d["image_urls"] = []
+        elif not d.get("image_urls"):
+            d["image_urls"] = []
+    return articles
+
+
 def get_article_counts() -> dict:
     """Return article counts per page (for dashboard)."""
     conn = get_connection()

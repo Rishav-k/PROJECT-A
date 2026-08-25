@@ -459,8 +459,46 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .am-analytics-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
 .am-analytics-val{font-size:24px;font-weight:800;line-height:1}
 .am-analytics-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
-/* Article body */
-.am-article-body{font-size:12px;line-height:1.75;color:var(--muted);background:var(--s2);border-radius:8px;padding:12px 14px;max-height:220px;overflow-y:auto;border:1px solid var(--border)}
+/* ── TOP NEWS CURATOR ── */
+.tn-segment-tabs{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
+.tn-tab{padding:8px 18px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--border);background:var(--s1);transition:all .15s;white-space:nowrap}
+.tn-tab:hover{color:var(--text);border-color:var(--muted)}
+.tn-tab.active{border-color:transparent;color:#fff;background:var(--accent)}
+.tn-tab.active.fin{background:var(--fin);color:#000}
+.tn-tab.active.tech{background:var(--tech)}
+.tn-tab.active.corp{background:var(--corp)}
+.tn-tab.active.world{background:var(--world)}
+.tn-grid{display:flex;flex-direction:column;gap:14px}
+.tn-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:all .2s;display:flex;flex-direction:column}
+.tn-card:hover{border-color:rgba(99,102,241,.5);box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.tn-card.rank-1{border-left:4px solid #ffd700}
+.tn-card.rank-2{border-left:4px solid #c0c0c0}
+.tn-card.rank-3{border-left:4px solid #cd7f32}
+.tn-card.rank-4{border-left:4px solid var(--border)}
+.tn-card.rank-5{border-left:4px solid var(--border)}
+.tn-card-header{padding:14px 18px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;background:var(--s2);border-bottom:1px solid var(--border)}
+.tn-rank-pill{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase;display:flex;align-items:center;gap:5px}
+.tn-rank-1{background:rgba(255,215,0,.15);color:#ffd700;border:1px solid rgba(255,215,0,.4)}
+.tn-rank-2{background:rgba(192,192,192,.15);color:#e0e0e0;border:1px solid rgba(192,192,192,.4)}
+.tn-rank-3{background:rgba(205,127,50,.15);color:#e69a58;border:1px solid rgba(205,127,50,.4)}
+.tn-rank-other{background:var(--s1);color:var(--muted);border:1px solid var(--border)}
+.tn-score-pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.tn-card-body{padding:16px 18px;display:grid;grid-template-columns:1fr 140px;gap:18px}
+.tn-main-col{display:flex;flex-direction:column;gap:8px}
+.tn-title{font-size:15px;font-weight:700;line-height:1.4;color:var(--text);text-decoration:none}
+.tn-title:hover{color:var(--accent)}
+.tn-meta{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted)}
+.tn-meta-src{font-weight:600;color:var(--text)}
+.tn-summary{font-size:12px;color:#a0aec0;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tn-thumb-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tn-thumb{width:130px;height:95px;border-radius:8px;object-fit:cover;background:var(--s2);border:1px solid var(--border)}
+.tn-thumb-empty{width:130px;height:95px;border-radius:8px;background:var(--s2);border:1px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:10px;text-align:center;padding:4px}
+.tn-card-footer{padding:12px 18px;background:var(--s1);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.tn-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tn-btn-gen{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;font-size:11px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;transition:opacity .15s}
+.tn-btn-gen:hover{opacity:.9}
+.tn-btn-post{background:var(--green);color:#000;font-weight:700;font-size:11px;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;transition:opacity .15s}
+.tn-btn-post:hover{opacity:.9}
 </style>
 </head>
 <body>
@@ -474,6 +512,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <nav class="nav">
     <div class="nav-section">Main</div>
     <button class="nav-item active" onclick="go('home',this)"><span class="icon">🏠</span>Home</button>
+    <button class="nav-item" onclick="go('topnews',this)"><span class="icon">🔥</span>Top 5 Picks</button>
     <button class="nav-item" onclick="go('pipelines',this)"><span class="icon">⚡</span>Pipelines</button>
     <button class="nav-item" onclick="go('instagram',this)"><span class="icon">📲</span>Instagram</button>
     <div class="nav-section">System</div>
@@ -684,6 +723,42 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       </div>
 
     </div><!-- /home -->
+
+
+    <!-- ════════════════════════════════════════
+         PAGE: TOP 5 PICKS
+    ════════════════════════════════════════ -->
+    <div class="page" id="page-topnews">
+      <!-- Top banner & Controls -->
+      <div style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(168,85,247,.08));border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2 style="font-size:18px;font-weight:800;letter-spacing:-.3px">🔥 Top 5 News Curator</h2>
+            <span class="chip chip-green" style="font-size:10px">AI SCORED & RANKED</span>
+          </div>
+          <div style="color:var(--muted);font-size:12px;margin-top:4px">
+            Curated highest-impact stories ranked for virality, authority, and engagement across all news segments.
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-d" onclick="loadTopNews(tnCurrentSegment)" style="font-size:12px">↻ Refresh Top 5</button>
+        </div>
+      </div>
+
+      <!-- Segment Selector Tabs -->
+      <div class="tn-segment-tabs" id="tn-tabs">
+        <button class="tn-tab active" data-seg="all" onclick="filterTopNewsSegment('all',this)">🔥 All Segments</button>
+        <button class="tn-tab fin" data-seg="finpulse" onclick="filterTopNewsSegment('finpulse',this)">💹 FinPulse (Markets)</button>
+        <button class="tn-tab tech" data-seg="techpulse" onclick="filterTopNewsSegment('techpulse',this)">💻 TechPulse (AI & Tech)</button>
+        <button class="tn-tab corp" data-seg="corppulse" onclick="filterTopNewsSegment('corppulse',this)">🏢 CorpPulse (Business)</button>
+        <button class="tn-tab world" data-seg="worldpulse" onclick="filterTopNewsSegment('worldpulse',this)">🌍 WorldPulse (Global Affairs)</button>
+      </div>
+
+      <!-- Top 5 List Container -->
+      <div id="tn-content-list" class="tn-grid">
+        <div style="color:var(--muted);text-align:center;padding:40px 0">Loading Top 5 News Picks…</div>
+      </div>
+    </div><!-- /topnews -->
 
 
     <!-- ════════════════════════════════════════
@@ -1056,7 +1131,7 @@ let countdownSecs = 30;
 let countdownTimer;
 let activityChart;
 
-const PAGE_TITLES = {home:'Home',pipelines:'Pipelines',instagram:'Instagram Manage',datasources:'Data Source Control',sources:'Sources Table',fetcher:'Fetcher — Source Visualizer',logs:'Logs & Errors'};
+const PAGE_TITLES = {home:'Home',topnews:'🔥 Top 5 News Picks',pipelines:'Pipelines',instagram:'Instagram Manage',datasources:'Data Source Control',sources:'Sources Table',fetcher:'Fetcher — Source Visualizer',logs:'Logs & Errors'};
 
 // ── UTILS ──
 function toast(msg, color='var(--green)') {
@@ -1096,8 +1171,9 @@ function stageLabel(item) {
 function go(page, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  if(btn) btn.classList.add('active');
+  const target = document.getElementById('page-'+page);
+  if (target) target.classList.add('active');
+  if (btn) btn.classList.add('active');
   document.getElementById('page-title').textContent = PAGE_TITLES[page]||page;
   currentPage = page;
   loadPage(page);
@@ -1105,12 +1181,202 @@ function go(page, btn) {
 
 function loadPage(page) {
   if (page==='home')        { loadStats(); loadActivity(); loadSchedule(); }
+  if (page==='topnews')     { loadTopNews(tnCurrentSegment); }
   if (page==='pipelines')   { loadPipeline(); }
   if (page==='instagram')   { loadIg(); }
   if (page==='datasources') { loadDataSources(); }
   if (page==='sources')     { loadSources(); }
   if (page==='fetcher')     { loadFetcher(); }
   if (page==='logs')        { loadLog(); loadErrors(); }
+}
+
+// ── TOP 5 NEWS CURATOR ──
+let tnCurrentSegment = 'all';
+let tnArticles = [];
+
+function filterTopNewsSegment(seg, btn) {
+  tnCurrentSegment = seg;
+  document.querySelectorAll('#tn-tabs .tn-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadTopNews(seg);
+}
+
+async function loadTopNews(seg='all') {
+  const container = document.getElementById('tn-content-list');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0">Loading Top 5 Picks…</div>';
+  try {
+    const data = await fetch(`/api/top-news?page=${seg}&limit=5`).then(r=>r.json());
+    tnArticles = data.items || [];
+    if (!tnArticles.length) {
+      container.innerHTML = `
+        <div class="card" style="padding:40px 20px;text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">📭</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px">No Top News Available</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:16px">No articles currently in database for this segment.</div>
+          <div><button class="btn btn-p" onclick="fetchPage('${seg==='all'?'finpulse':seg}')">🕸 Fetch News Now</button></div>
+        </div>`;
+      return;
+    }
+
+    let html = '';
+    let currentSeg = null;
+    let rankInSeg = 1;
+
+    tnArticles.forEach((a, idx) => {
+      if (seg === 'all' && a.page !== currentSeg) {
+        currentSeg = a.page;
+        rankInSeg = 1;
+        const pageNames = {finpulse:'💹 FinPulse — Finance & Markets', techpulse:'💻 TechPulse — Technology & AI', corppulse:'🏢 CorpPulse — Corporate & Strategy', worldpulse:'🌍 WorldPulse — Global Affairs'};
+        html += `<div style="font-size:14px;font-weight:800;letter-spacing:-.2px;color:var(--text);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+          ${pageNames[a.page] || a.page.toUpperCase()}
+        </div>`;
+      }
+
+      const rank = seg === 'all' ? rankInSeg : (idx + 1);
+      rankInSeg++;
+
+      const rankClass = rank === 1 ? 'rank-1' : (rank === 2 ? 'rank-2' : (rank === 3 ? 'rank-3' : (rank === 4 ? 'rank-4' : 'rank-5')));
+      const rankPillClass = rank === 1 ? 'tn-rank-1' : (rank === 2 ? 'tn-rank-2' : (rank === 3 ? 'tn-rank-3' : 'tn-rank-other'));
+      const rankLabel = rank === 1 ? '🏆 #1 TOP PICK' : (rank === 2 ? '🥈 #2 TRENDING' : (rank === 3 ? '🥉 #3 HIGH IMPACT' : `#${rank} PICK`));
+
+      const hasCaption = !!a.caption;
+      const hasImage = !!a.image_path;
+      const isPosted = a.post_status === 'posted' || a.is_posted === 1;
+
+      // Status pill
+      let statusBadge = '<span class="post-stage stage-fetched">Fetched</span>';
+      if (isPosted) statusBadge = '<span class="post-stage stage-posted">✓ Live on Instagram</span>';
+      else if (hasImage) statusBadge = '<span class="post-stage stage-ready">🎨 Carousel Ready</span>';
+      else if (hasCaption) statusBadge = '<span class="post-stage stage-pending">📝 Captioned</span>';
+
+      // Thumbnail
+      const thumbUrl = a.image_file ? `/img/${a.image_file}` : (a.image_url || '');
+      const thumbHtml = thumbUrl
+        ? `<img src="${thumbUrl}" class="tn-thumb" onclick="dsOpenLightbox('${thumbUrl}','${esc(a.title)}')" style="cursor:pointer" alt="thumbnail" onerror="this.outerHTML='<div class=\\'tn-thumb-empty\\'>📰<span>No Image</span></div>'">`
+        : `<div class="tn-thumb-empty">📰<span>No Image</span></div>`;
+
+      // Carousel preview strip if slides exist
+      let carouselMiniStrip = '';
+      if (a.slide_files && a.slide_files.length) {
+        carouselMiniStrip = `<div style="display:flex;gap:6px;margin-top:8px;overflow-x:auto;padding:4px 0">` +
+          a.slide_files.map((sf, si) => `
+            <img src="/img/${sf}" style="width:48px;height:48px;border-radius:4px;object-fit:cover;cursor:pointer;border:1px solid var(--border)"
+                 title="Slide ${si+1}" onclick="dsOpenLightbox('/img/${sf}','Slide ${si+1} - ${esc(a.title)}')">
+          `).join('') +
+          `</div>`;
+      }
+
+      html += `
+        <div class="tn-card ${rankClass}">
+          <div class="tn-card-header">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span class="tn-rank-pill ${rankPillClass}">${rankLabel}</span>
+              <span class="post-page-tag ${tagClass(a.page)}">${a.page}</span>
+              ${statusBadge}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="tn-score-pill">🔥 ${Math.round(a.score||0)} pts</span>
+            </div>
+          </div>
+
+          <div class="tn-card-body">
+            <div class="tn-main-col">
+              <a href="${a.url||'#'}" target="_blank" class="tn-title">${esc(a.title)}</a>
+              <div class="tn-meta">
+                <span class="tn-meta-src">📰 ${esc(a.source_name||'Source')}</span>
+                <span>•</span>
+                <span>⏱️ ${timeAgo(a.published_at||a.fetched_at)}</span>
+                ${a.category ? `<span>•</span><span style="text-transform:capitalize">🏷️ ${a.category}</span>` : ''}
+              </div>
+              <div class="tn-summary">${esc(a.summary || 'Click Generate Post to create AI analysis and Instagram carousel.')}</div>
+              ${carouselMiniStrip}
+              <div class="dsa-result" id="tn-result-${a.id}"></div>
+            </div>
+            <div class="tn-thumb-col">
+              ${thumbHtml}
+            </div>
+          </div>
+
+          <div class="tn-card-footer">
+            <div style="font-size:11px;color:var(--muted)">
+              ID: <b>#${a.id}</b>
+            </div>
+            <div class="tn-actions">
+              ${!hasCaption || !hasImage ? `
+                <button class="tn-btn-gen" onclick="tnGenFull(${a.id},this)">
+                  ✦ 1-Click Generate Post (Caption + Carousel)
+                </button>
+              ` : `
+                <button class="btn btn-d btn-sm" onclick="tnGenFull(${a.id},this)">
+                  ↺ Regenerate
+                </button>
+              `}
+              <button class="btn btn-d btn-sm" onclick="openArticleModal(${a.id})">
+                👁️ View Details & Slides
+              </button>
+              <button class="tn-btn-post" ${!hasImage ? 'disabled title="Generate carousel first"' : ''} onclick="tnPost(${a.id},this,'${a.page}')">
+                📸 Post to Instagram
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<div class="card" style="padding:20px;color:var(--red)">Failed to load Top 5 Picks: ${e.message}</div>`;
+  }
+}
+
+async function tnGenFull(id, btn) {
+  const origText = btn.innerHTML;
+  btn.innerHTML = '⟳ Generating…';
+  btn.disabled = true;
+  const res = document.getElementById(`tn-result-${id}`);
+  if (res) { res.className = 'dsa-result'; res.textContent = 'Generating AI caption + 5-slide carousel…'; }
+
+  try {
+    const data = await fetch(`/api/article/${id}/generate-full`, {method:'POST'}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast('✓ Caption & 5-Slide Carousel Generated!', 'var(--green)');
+    btn.innerHTML = '✓ Generated';
+    if (res) { res.className = 'dsa-result ok'; res.textContent = `✓ Generated via ${data.backend || 'AI'} • ${data.slide_count||5} slides ready!`; }
+    setTimeout(() => loadTopNews(tnCurrentSegment), 1000);
+  } catch(e) {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+    if (res) { res.className = 'dsa-result err'; res.textContent = `Error: ${e.message}`; }
+    toast(`Failed: ${e.message}`, 'var(--red)');
+  }
+}
+
+async function tnPost(id, btn, page) {
+  const origText = btn.innerHTML;
+  btn.innerHTML = '⟳ Posting…';
+  btn.disabled = true;
+  const res = document.getElementById(`tn-result-${id}`);
+  if (res) { res.className = 'dsa-result'; res.textContent = 'Publishing carousel to Instagram…'; }
+
+  try {
+    const data = await fetch(`/api/article/${id}/post`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({repost: false})
+    }).then(r=>r.json());
+
+    if (data.error) throw new Error(data.error);
+    toast('🚀 Posted successfully to Instagram!', 'var(--green)');
+    btn.innerHTML = '✅ Posted';
+    if (res) { res.className = 'dsa-result ok'; res.textContent = `✓ Published to Instagram (Post ID: ${data.instagram_post_id||'live'})`; }
+    setTimeout(() => loadTopNews(tnCurrentSegment), 1500);
+  } catch(e) {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+    if (res) { res.className = 'dsa-result err'; res.textContent = `Post failed: ${e.message}`; }
+    toast(`Post failed: ${e.message}`, 'var(--red)');
+  }
 }
 
 // ── STATS (HOME) ──
