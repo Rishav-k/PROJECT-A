@@ -154,7 +154,12 @@ def get_source_articles(source_display_name: str, limit: int = 80) -> list[dict]
             p.posted_at   AS post_published_at,
             {slide_paths_col}
         FROM articles a
-        LEFT JOIN posts p ON p.article_id = a.id
+        LEFT JOIN posts p ON p.id = (
+            SELECT p2.id FROM posts p2
+            WHERE p2.article_id = a.id
+            ORDER BY (p2.status = 'posted') DESC, p2.id DESC
+            LIMIT 1
+        )
         WHERE a.source_name = ?
         ORDER BY
             CASE WHEN p.status='posted' THEN 0
@@ -212,7 +217,12 @@ def get_top_news_across_segments(page: str = None, limit: int = 5) -> list[dict]
             p.posted_at   AS post_published_at,
             {slide_paths_col}
         FROM articles a
-        LEFT JOIN posts p ON p.article_id = a.id
+        LEFT JOIN posts p ON p.id = (
+            SELECT p2.id FROM posts p2
+            WHERE p2.article_id = a.id
+            ORDER BY (p2.status = 'posted') DESC, p2.id DESC
+            LIMIT 1
+        )
     """
 
     if page and page != "all":

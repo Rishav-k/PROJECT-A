@@ -63,11 +63,16 @@ def get_stats():
     sources_ok     = conn.execute("SELECT COUNT(*) FROM sources WHERE last_status='ok'").fetchone()[0]
     per_page = conn.execute("""
         SELECT a.page,
-               COUNT(a.id)                                        as total,
-               SUM(a.is_posted)                                   as posted,
-               COUNT(CASE WHEN p.status='pending' AND p.image_path IS NOT NULL THEN 1 END) as ready_queue
+               COUNT(DISTINCT a.id)                               as total,
+               SUM(CASE WHEN a.is_posted = 1 THEN 1 ELSE 0 END)   as posted,
+               COUNT(DISTINCT CASE WHEN p.status='pending' AND p.image_path IS NOT NULL THEN a.id END) as ready_queue
         FROM articles a
-        LEFT JOIN posts p ON p.article_id = a.id
+        LEFT JOIN posts p ON p.id = (
+            SELECT p2.id FROM posts p2
+            WHERE p2.article_id = a.id
+            ORDER BY (p2.status = 'posted') DESC, p2.id DESC
+            LIMIT 1
+        )
         GROUP BY a.page
     """).fetchall()
     conn.close()
@@ -96,7 +101,12 @@ def get_pipeline_data():
                p.id as post_id, p.caption, p.image_path,
                p.status as post_status, p.instagram_post_id, p.created_at as post_created
         FROM articles a
-        LEFT JOIN posts p ON p.article_id = a.id
+        LEFT JOIN posts p ON p.id = (
+            SELECT p2.id FROM posts p2
+            WHERE p2.article_id = a.id
+            ORDER BY (p2.status = 'posted') DESC, p2.id DESC
+            LIMIT 1
+        )
         ORDER BY
             CASE WHEN p.id IS NOT NULL THEN 0 ELSE 1 END,
             CASE p.status WHEN 'posted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
