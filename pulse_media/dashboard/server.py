@@ -925,6 +925,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(analyze_sector_impact())
             except Exception as e:
                 self._json({"error": str(e)})
+        elif path == "/api/stock-news":
+            ticker = qp("ticker", "RELIANCE")
+            limit = int(qp("limit", 10))
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from stock_news import get_stock_news_24h
+                self._json(get_stock_news_24h(ticker, limit))
+            except Exception as e:
+                self._json({"error": str(e), "items": []})
         elif path.startswith("/api/trigger/"):
             page = path.split("/")[-1]
             self._trigger(page, qp("dry","0")=="1")
