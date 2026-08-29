@@ -47,11 +47,31 @@ python3 .agents/skills/stock-market-impact-analyzer/scripts/market_impact_cli.py
 python3 .agents/skills/stock-market-impact-analyzer/scripts/market_impact_cli.py --generate-post
 ```
 
-**4-Slide Visual Composition**:
-- **Slide 1**: Nifty 50, BSE Sensex, Bank Nifty, and India VIX Movement & Points.
-- **Slide 2**: Nifty Cash Inflows (FII / FPI flow, DII domestic flow, Institutional Net, Retail flow).
-- **Slide 3**: Market Sentiments (Overall sentiment bias, VIX cooling, Sector rotation radar).
-- **Slide 4**: Major Market News (Top breaking stories, catalysts, sources, and links).
+**4-Slide Premium Visual Architecture**:
+- **Slide 1**: Nifty 50, BSE Sensex, Bank Nifty & India VIX Scorecard.
+  - *Background*: Deep Crimson-to-Maroon gradient (`#B91C1C` → `#450A0A`) with BSE Phiroze Towers & Wall Street exchange architectural silhouettes and candlestick grid watermarks.
+  - *Dynamic Mascots*: Emerald Charging Bull (`🐂 BULL POWER`) on market rallies vs. Roaring Bear (`🐻 BEAR ALERT`) on corrections.
+  - *Metrics*: Nifty & Sensex in bold impact typography with solid contrast status pills.
+- **Slide 2**: Nifty Cash Inflows (FII / FPI, DII Domestic, Institutional Total & Retail Flows).
+  - *Background*: Obsidian Navy-to-Sapphire gradient (`#0F172A` → `#020617`) with technical orderbook grid.
+  - *Banner*: Tangerine ribbon badge with official NSE trade date.
+  - *Dynamic Motif*: Green Institutional Bull badge on net buying days.
+- **Slide 3**: Market Sentiments & Sector Radar Matrix.
+  - *Background*: Deep Ocean Teal gradient (`#0369A1` → `#042F2E`) with exchange skyline texture.
+  - *Gauges*: Overall market mood, India VIX cooling/spike interpretation.
+  - *Sector Cards*: Bullish (Emerald Green) & Bearish (Rose Red) badges, tickers, and macroeconomic catalysts.
+- **Slide 4**: Major Market News & Catalysts.
+  - *Background*: Warm Amber-to-Sienna gradient (`#C2410C` → `#7C2D12`) with Wall Street pillar silhouettes.
+  - *Content*: Top 3 breaking market developments with clean source badges and full caption link callouts.
+
+---
+
+## 🎨 Color Palette & Design Tokens
+- **Crimson & Maroon** (`#B91C1C` / `#450A0A`): Index headers, Bearish alerts, risk warnings.
+- **Emerald Green** (`#10B981` / `#059669`): Bullish breakouts, net inflows, institutional buying.
+- **Electric Amber & Tangerine** (`#F59E0B` / `#EF8D32`): FII-DII ribbons, retail cards, highlight banners.
+- **Ocean Blue & Teal** (`#0369A1` / `#3FA9BE`): Sentiment radar, sector matrix, swipe indicators.
+- **Vintage Cream & Crisp White** (`#FEF3DC` / `#FFFFFF`): Borderless readable card surfaces with high contrast.
 
 ---
 

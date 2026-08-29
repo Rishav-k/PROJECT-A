@@ -199,8 +199,11 @@ def draw_swipe_arrow(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: tuple):
 
 def draw_swipe_pill(draw: ImageDraw.ImageDraw, cx: int, cy: int, fill: tuple, text_color: tuple):
     font = _get_font("din_alt", 26)
-    draw.rounded_rectangle([(cx - 90, cy - 24), (cx + 90, cy + 24)], radius=24, fill=fill)
-    draw.text((cx, cy), "SWIPE ➔", fill=text_color, font=font, anchor="mm")
+    draw.rounded_rectangle([(cx - 95, cy - 24), (cx + 95, cy + 24)], radius=24, fill=fill)
+    draw.text((cx - 10, cy), "SWIPE", fill=text_color, font=font, anchor="mm")
+    # Draw clean vector arrow
+    ax = cx + 52
+    draw.polygon([(ax - 8, cy - 8), (ax + 4, cy), (ax - 8, cy + 8)], fill=text_color)
 
 
 def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> List[str]:
