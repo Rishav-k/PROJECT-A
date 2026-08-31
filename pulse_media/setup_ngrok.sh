@@ -58,7 +58,8 @@ LAUNCH_SCRIPT="$HOME/bin/pulse-start"
 cat > "$LAUNCH_SCRIPT" << 'EOF'
 #!/bin/bash
 # Start Pulse Media dashboard + ngrok tunnel
-PROJECT="$HOME/PROJECT-A/pulse_media"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT="${SCRIPT_DIR}"
 
 echo ""
 echo "════════════════════════════════════════"

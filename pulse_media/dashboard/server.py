@@ -27,203 +27,22 @@ except Exception as _me:
     print(f"⚠️  Migration warning: {_me}")
 
 # ─────────────────────────────────────────────
-# BACKGROUND AUTO-PROCESSOR
-# After any fetch, new articles are queued here.
-# A single daemon thread processes them sequentially:
-#   caption → carousel
+# MANUAL-ONLY PROCESSING MODE
+# Auto-generation is disabled to conserve credits.
+# Articles are fetched and displayed; AI captions and carousels
+# are generated strictly on-demand when the user clicks generate.
 # ─────────────────────────────────────────────
 
-_bg_queue   = _queue.Queue()
-_bg_status  = {}   # {article_id: "queued"|"captioning"|"imaging"|"done"|"error:…"}
-_bg_lock    = threading.Lock()
-
-def _bg_set(article_id, status):
-    with _bg_lock:
-        _bg_status[article_id] = status
-
-def _bg_auto_process(article_id: int, page: str):
-    """Generate caption + carousel for one article. Called from background thread."""
-    try:
-        # Re-fetch fresh state
-        article = _get_article_with_post(article_id)
-        if not article:
-            return
-
-        # ── Step 1: Caption ───────────────────────────────────────────────────
-        if not article.get("caption"):
-            _bg_set(article_id, "captioning")
-            from ai import generate_caption
-            result = generate_caption(article, page)
-            if not result or not result.get("caption"):
-                raise RuntimeError("Caption generation returned empty")
-            caption  = result["caption"]
-            hashtags = result.get("hashtags", "")
-            upconn   = get_connection()
-            post_id  = article.get("post_id")
-            if post_id:
-                upconn.execute("UPDATE posts SET caption=?, hashtags=? WHERE id=?",
-                               (caption, hashtags, post_id))
-            else:
-                cur = upconn.execute(
-                    "INSERT INTO posts (article_id, page, caption, hashtags, status) "
-                    "VALUES (?,?,?,?,'pending')",
-                    (article_id, page, caption, hashtags)
-                )
-                post_id = cur.lastrowid
-            upconn.commit(); upconn.close()
-            article["caption"]  = caption
-            article["post_id"]  = post_id
-            print(f"  ✓ [bg] Caption #{article_id} ({page}) — {len(caption)} chars")
-            time.sleep(2)   # brief pause between articles (Groq rate limit headroom)
-
-        # ── Step 2: Carousel ──────────────────────────────────────────────────
-        if not article.get("image_path"):
-            _bg_set(article_id, "imaging")
-            from carousel import generate_carousel, _parse_caption
-            caption = article.get("caption", "")
-            cd      = _parse_caption(caption, article.get("title", ""))
-            slides  = generate_carousel(article, page=page, caption=caption, caption_data=cd)
-            img_path     = str(slides[0])
-            slides_json  = json.dumps([str(p) for p in slides])
-            post_id      = article.get("post_id")
-            upconn       = get_connection()
-            if post_id:
-                upconn.execute("UPDATE posts SET image_path=?, slide_paths=? WHERE id=?",
-                               (img_path, slides_json, post_id))
-            else:
-                upconn.execute(
-                    "INSERT INTO posts (article_id, page, caption, image_path, slide_paths, status) "
-                    "VALUES (?,?,?,?,?,'pending')",
-                    (article_id, page, article.get("caption",""), img_path, slides_json)
-                )
-            upconn.commit(); upconn.close()
-            print(f"  ✓ [bg] Carousel #{article_id} — {len(slides)} slides")
-
-        _bg_set(article_id, "done")
-
-    except Exception as e:
-        _bg_set(article_id, f"error: {str(e)[:100]}")
-        print(f"  ✗ [bg] #{article_id}: {e}")
-
-
-def _bg_worker_loop():
-    """Daemon thread — drains the background processing queue forever."""
-    while True:
-        try:
-            article_id, page = _bg_queue.get(timeout=10)
-            # Skip if already processed or currently processing
-            cur_status = _bg_status.get(article_id, "")
-            if cur_status in ("imaging", "captioning", "done"):
-                _bg_queue.task_done()
-                continue
-            _bg_auto_process(article_id, page)
-            _bg_queue.task_done()
-            # Trim old done entries — keep latest 100
-            with _bg_lock:
-                done_keys = [k for k, v in _bg_status.items()
-                             if v == "done" or v.startswith("error")]
-                for k in done_keys[:-80]:
-                    _bg_status.pop(k, None)
-        except _queue.Empty:
-            pass
-        except Exception as e:
-            print(f"  ✗ [bg-worker] {e}")
-
-
-def _queue_unprocessed(source_display_name: str, page: str, max_q: int = 5):
-    """
-    Find articles from a source that still need caption or carousel,
-    and push them onto the background queue (top by score, max max_q).
-    """
-    try:
-        conn  = get_connection()
-        posts_cols = {r[1] for r in conn.execute("PRAGMA table_info(posts)").fetchall()}
-        img_check  = ("(p.image_path IS NULL OR p.image_path = '')"
-                      if "image_path" in posts_cols else "1=1")
-        rows  = conn.execute(f"""
-            SELECT a.id, a.page FROM articles a
-            LEFT JOIN posts p ON p.article_id = a.id
-            WHERE a.source_name = ?
-              AND a.is_posted   = 0
-              AND (
-                    p.id IS NULL
-                 OR (p.caption  IS NULL OR p.caption  = '')
-                 OR ({img_check})
-              )
-            ORDER BY a.score DESC
-            LIMIT ?
-        """, (source_display_name, max_q)).fetchall()
-        conn.close()
-        added = 0
-        for row in rows:
-            aid = row[0]; pg = row[1] or page
-            cur = _bg_status.get(aid, "")
-            if cur in ("queued", "captioning", "imaging"):
-                continue
-            _bg_set(aid, "queued")
-            _bg_queue.put((aid, pg))
-            added += 1
-        if added:
-            print(f"  📋 [bg] Queued {added} articles from '{source_display_name}'")
-    except Exception as e:
-        print(f"  ⚠️  [bg] queue_unprocessed error: {e}")
-
-
-def _queue_page_unprocessed(page: str, max_q: int = 10):
-    """Queue unprocessed articles for an entire page."""
-    try:
-        conn  = get_connection()
-        rows  = conn.execute("""
-            SELECT a.id, a.page FROM articles a
-            LEFT JOIN posts p ON p.article_id = a.id
-            WHERE a.page      = ?
-              AND a.is_posted = 0
-              AND (
-                    p.id IS NULL
-                 OR (p.caption   IS NULL OR p.caption   = '')
-                 OR (p.image_path IS NULL OR p.image_path = '')
-              )
-            ORDER BY a.score DESC
-            LIMIT ?
-        """, (page, max_q)).fetchall()
-        conn.close()
-        added = 0
-        for row in rows:
-            aid = row[0]; pg = row[1] or page
-            cur = _bg_status.get(aid, "")
-            if cur in ("queued", "captioning", "imaging"):
-                continue
-            _bg_set(aid, "queued")
-            _bg_queue.put((aid, pg))
-            added += 1
-        if added:
-            print(f"  📋 [bg] Queued {added} articles for page '{page}'")
-    except Exception as e:
-        print(f"  ⚠️  [bg] queue_page error: {e}")
-
-
 def get_bg_status():
-    """Return current background processing queue state."""
-    with _bg_lock:
-        status_copy = dict(_bg_status)
-    active = {aid: s for aid, s in status_copy.items()
-              if s in ("queued", "captioning", "imaging")}
-    errors = {aid: s for aid, s in status_copy.items() if s.startswith("error")}
-    done   = sum(1 for s in status_copy.values() if s == "done")
+    """Return idle status since auto-processor is disabled."""
     return {
-        "queue_size":   _bg_queue.qsize(),
-        "active":       active,
-        "active_count": len(active),
-        "done_count":   done,
-        "errors":       errors,
-        "is_busy":      len(active) > 0 or _bg_queue.qsize() > 0,
+        "queue_size":   0,
+        "active":       {},
+        "active_count": 0,
+        "done_count":   0,
+        "errors":       {},
+        "is_busy":      False,
     }
-
-
-# Start the daemon worker
-_bg_thread = threading.Thread(target=_bg_worker_loop, daemon=True, name="bg-processor")
-_bg_thread.start()
-print("  🔄 Background processor started")
 
 PORT     = int(os.environ.get("PORT", 8888))
 IMAGES_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "output", "images"))
@@ -244,11 +63,16 @@ def get_stats():
     sources_ok     = conn.execute("SELECT COUNT(*) FROM sources WHERE last_status='ok'").fetchone()[0]
     per_page = conn.execute("""
         SELECT a.page,
-               COUNT(a.id)                                        as total,
-               SUM(a.is_posted)                                   as posted,
-               COUNT(CASE WHEN p.status='pending' AND p.image_path IS NOT NULL THEN 1 END) as ready_queue
+               COUNT(DISTINCT a.id)                               as total,
+               SUM(CASE WHEN a.is_posted = 1 THEN 1 ELSE 0 END)   as posted,
+               COUNT(DISTINCT CASE WHEN p.status='pending' AND p.image_path IS NOT NULL THEN a.id END) as ready_queue
         FROM articles a
-        LEFT JOIN posts p ON p.article_id = a.id
+        LEFT JOIN posts p ON p.id = (
+            SELECT p2.id FROM posts p2
+            WHERE p2.article_id = a.id
+            ORDER BY (p2.status = 'posted') DESC, p2.id DESC
+            LIMIT 1
+        )
         GROUP BY a.page
     """).fetchall()
     conn.close()
@@ -277,7 +101,12 @@ def get_pipeline_data():
                p.id as post_id, p.caption, p.image_path,
                p.status as post_status, p.instagram_post_id, p.created_at as post_created
         FROM articles a
-        LEFT JOIN posts p ON p.article_id = a.id
+        LEFT JOIN posts p ON p.id = (
+            SELECT p2.id FROM posts p2
+            WHERE p2.article_id = a.id
+            ORDER BY (p2.status = 'posted') DESC, p2.id DESC
+            LIMIT 1
+        )
         ORDER BY
             CASE WHEN p.id IS NOT NULL THEN 0 ELSE 1 END,
             CASE p.status WHEN 'posted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
@@ -303,13 +132,15 @@ def get_pipeline_data():
         rows.append(d)
     return {"stages": stages, "items": rows}
 
-def get_posts_by_page(page=None, status=None, limit=30):
+def get_posts_by_page(page=None, status=None, limit=50):
     conn = get_connection()
     q = """
-        SELECT p.id, p.page, p.status, p.caption, p.image_path,
+        SELECT p.id, p.article_id, p.page, p.status, p.caption, p.image_path, p.slide_paths,
                p.instagram_post_id, p.created_at, p.posted_at,
-               a.title, a.source_name, a.url, a.score, a.fetched_at
-        FROM posts p JOIN articles a ON p.article_id = a.id
+               COALESCE(a.title, 'Market Intelligence Post') as title,
+               COALESCE(a.source_name, 'Pulse AI') as source_name,
+               a.url, a.score, a.fetched_at
+        FROM posts p LEFT JOIN articles a ON p.article_id = a.id
         WHERE 1=1
     """
     params = []
@@ -333,6 +164,18 @@ def get_posts_by_page(page=None, status=None, limit=30):
                 d["image_file"] = os.path.basename(d["image_path"])
         else:
             d["image_file"] = None
+
+        # Parse slide_paths to slide_files
+        d["slide_files"] = []
+        if d.get("slide_paths"):
+            try:
+                sp_list = json.loads(d["slide_paths"]) if isinstance(d["slide_paths"], str) else d["slide_paths"]
+                d["slide_files"] = [os.path.basename(p) for p in sp_list if p]
+            except Exception:
+                d["slide_files"] = [d["image_file"]] if d.get("image_file") else []
+        elif d.get("image_file"):
+            d["slide_files"] = [d["image_file"]]
+
         result.append(d)
     return result
 
@@ -427,9 +270,77 @@ def get_source_articles_data(source_name: str, limit: int = 80):
             else:
                 if os.path.exists(sp):
                     slide_files.append(fname)
+    return {"items": articles, "source": source_name}
+
+
+def get_top_news_data(page: str = "all", limit: int = 5):
+    """Return top ranked news articles across segments or for a specific page."""
+    try:
+        from database.models import get_top_news_across_segments
+        articles = get_top_news_across_segments(page, limit)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+    now = datetime.now(timezone.utc)
+    for a in articles:
+        is_posted = (a.get("post_status") == "posted") or (a.get("is_posted") == 1)
+        if is_posted:
+            a["pipeline_stage"] = "posted"
+            pa = a.get("post_published_at") or a.get("posted_at") or ""
+            try:
+                dt = datetime.fromisoformat(pa.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                age_days = (now - dt).total_seconds() / 86400
+            except Exception:
+                age_days = 0
+            a["show_likes"]  = age_days >= 1
+        elif a.get("image_path"):
+            a["pipeline_stage"] = "image_ready"
+            a["show_likes"] = False
+        elif a.get("caption"):
+            a["pipeline_stage"] = "captioned"
+            a["show_likes"] = False
+        elif a.get("post_id"):
+            a["pipeline_stage"] = "creating"
+            a["show_likes"] = False
+        else:
+            a["pipeline_stage"] = "fetched"
+            a["show_likes"] = False
+
+        # Image file
+        if a.get("image_path"):
+            stem = os.path.basename(a["image_path"]).replace("_clean.jpg","").replace(".jpg","").replace(".png","")
+            for ext in ("_clean.jpg", ".jpg", ".png"):
+                candidate = stem + ext
+                if os.path.exists(os.path.join(IMAGES_DIR, candidate)):
+                    a["image_file"] = candidate
+                    break
+            else:
+                a["image_file"] = os.path.basename(a["image_path"])
+        else:
+            a["image_file"] = None
+
+        raw_sp = a.get("slide_paths", "[]") or "[]"
+        try:
+            sp_paths = json.loads(raw_sp) if isinstance(raw_sp, str) else []
+        except Exception:
+            sp_paths = []
+        slide_files = []
+        for sp in sp_paths:
+            fname = os.path.basename(sp)
+            stem2 = fname.replace("_clean.jpg","").replace(".jpg","")
+            for ext in ("_clean.jpg", ".jpg"):
+                c = stem2 + ext
+                if os.path.exists(os.path.join(IMAGES_DIR, c)):
+                    slide_files.append(c)
+                    break
+            else:
+                if os.path.exists(sp):
+                    slide_files.append(fname)
         a["slide_files"] = slide_files
 
-    return {"items": articles, "source": source_name}
+    return {"items": articles, "page": page, "count": len(articles)}
 
 
 def get_workers():
@@ -673,6 +584,23 @@ def article_action_post(article_id: int, repost: bool = False) -> dict:
         return {"error": str(e), "success": False}
 
 
+def article_action_generate_full(article_id: int) -> dict:
+    """Generate both caption and 5-slide carousel on demand for an article."""
+    cap_res = article_action_generate_caption(article_id)
+    if not cap_res.get("success"):
+        return {"error": cap_res.get("error", "Caption generation failed"), "success": False}
+    img_res = article_action_generate_image(article_id)
+    return {
+        "success": img_res.get("success", False),
+        "caption": cap_res.get("caption"),
+        "backend": cap_res.get("backend"),
+        "post_id": img_res.get("post_id"),
+        "image_file": img_res.get("image_file"),
+        "slide_count": img_res.get("slide_count", 0),
+        "error": img_res.get("error"),
+    }
+
+
 def article_action_mark_posted(article_id: int) -> dict:
     try:
         upconn = get_connection()
@@ -681,13 +609,90 @@ def article_action_mark_posted(article_id: int) -> dict:
             (article_id,)
         )
         upconn.execute(
-            "UPDATE posts SET status='posted', posted_at=datetime('now') WHERE article_id=? AND status='pending'",
+            "UPDATE posts SET status='posted', posted_at=datetime('now') WHERE article_id=?",
             (article_id,)
         )
         upconn.commit(); upconn.close()
         return {"success": True}
     except Exception as e:
         return {"error": str(e)}
+
+
+def post_action_publish(post_id: int) -> dict:
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+    conn.close()
+    if not row:
+        return {"error": "Post not found", "success": False}
+    post = dict(row)
+    if not post.get("image_path") or not post.get("caption"):
+        return {"error": "Incomplete post data (missing image or caption)", "success": False}
+
+    slide_paths_raw = post.get("slide_paths") or "[]"
+    try:
+        slide_paths = json.loads(slide_paths_raw) if isinstance(slide_paths_raw, str) else []
+    except Exception:
+        slide_paths = []
+    slide_paths = [p for p in slide_paths if os.path.exists(p)]
+
+    page = post.get("page", "finpulse")
+    caption = post.get("caption", "")
+
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        if len(slide_paths) >= 2:
+            from instagram import post_carousel_to_instagram
+            article_mock = {"title": "Market Update", "id": post.get("article_id") or 0}
+            result = post_carousel_to_instagram(article_mock, caption, slide_paths, page, dry_run=False)
+        else:
+            from instagram import post_to_instagram
+            article_mock = {"title": "Market Update", "id": post.get("article_id") or 0}
+            result = post_to_instagram(article_mock, caption, post["image_path"], page, dry_run=False)
+
+        if result.get("success"):
+            ig_id = result.get("post_id") or ""
+            upconn = get_connection()
+            upconn.execute(
+                "UPDATE posts SET status='posted', instagram_post_id=?, posted_at=datetime('now') WHERE id=?",
+                (ig_id, post_id)
+            )
+            if post.get("article_id"):
+                upconn.execute("UPDATE articles SET is_posted=1, posted_at=datetime('now') WHERE id=?", (post["article_id"],))
+            upconn.commit()
+            upconn.close()
+            return {"success": True, "instagram_post_id": ig_id, "is_carousel": len(slide_paths) >= 2}
+        else:
+            return {"error": result.get("error", "Instagram post failed"), "success": False}
+    except Exception as e:
+        return {"error": str(e), "success": False}
+
+
+def instagram_action_login(page: str = "finpulse", code: str = None) -> dict:
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from instagram import get_client, get_credentials
+        cl = get_client(page, verification_code=code)
+        creds = get_credentials(page)
+        info = cl.user_info_by_username(creds["username"])
+        return {
+            "success": True,
+            "username": creds["username"],
+            "follower_count": info.follower_count,
+            "message": f"Successfully connected to @{creds['username']}!"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def post_action_delete(post_id: int) -> dict:
+    try:
+        conn = get_connection()
+        conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+        conn.commit()
+        conn.close()
+        return {"success": True}
+    except Exception as e:
+        return {"error": str(e), "success": False}
 
 
 def get_ready_posts():
@@ -801,7 +806,10 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
 
     def _check_auth(self) -> bool:
-        """Return True if request is authenticated, otherwise send 401 and return False."""
+        """Return True if request is authenticated or auth is disabled for local access."""
+        require_auth = os.environ.get("DASHBOARD_REQUIRE_AUTH", "0") == "1"
+        if not require_auth:
+            return True
         auth = self.headers.get("Authorization", "")
         if auth == f"Basic {_DASH_TOKEN}":
             return True
@@ -829,7 +837,32 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             body = {}
 
-        m = re.match(r"^/api/article/(\d+)/(generate-caption|generate-image|post|mark-posted)$", path)
+        if path == "/api/market-impact/generate-post":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from fii_dii import generate_market_impact_post
+                self._json(generate_market_impact_post())
+            except Exception as e:
+                self._json({"error": str(e), "success": False})
+            return
+
+        if path == "/api/instagram/login":
+            page = body.get("page", "finpulse")
+            code = body.get("verification_code") or body.get("code")
+            self._json(instagram_action_login(page, code))
+            return
+
+        m_post = re.match(r"^/api/post/(\d+)/(publish|delete)$", path)
+        if m_post:
+            post_id = int(m_post.group(1))
+            post_act = m_post.group(2)
+            if post_act == "publish":
+                self._json(post_action_publish(post_id))
+            elif post_act == "delete":
+                self._json(post_action_delete(post_id))
+            return
+
+        m = re.match(r"^/api/article/(\d+)/(generate-caption|generate-image|generate-full|post|mark-posted)$", path)
         if not m:
             self.send_error(404); return
         article_id = int(m.group(1))
@@ -839,6 +872,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(article_action_generate_caption(article_id))
         elif action == "generate-image":
             self._json(article_action_generate_image(article_id))
+        elif action == "generate-full":
+            self._json(article_action_generate_full(article_id))
         elif action == "post":
             repost = bool(body.get("repost", False))
             self._json(article_action_post(article_id, repost=repost))
@@ -872,6 +907,33 @@ class Handler(BaseHTTPRequestHandler):
             self._json(get_activity())
         elif path == "/api/schedule":
             self._json({"next": get_next_schedule()})
+        elif path == "/api/top-news":
+            page = qp("page", "all")
+            limit = int(qp("limit", 5))
+            self._json(get_top_news_data(page=page, limit=limit))
+        elif path == "/api/fii-dii":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from fii_dii import fetch_fii_dii_data
+                self._json(fetch_fii_dii_data())
+            except Exception as e:
+                self._json({"error": str(e)})
+        elif path == "/api/market-impact":
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from fii_dii import analyze_sector_impact
+                self._json(analyze_sector_impact())
+            except Exception as e:
+                self._json({"error": str(e)})
+        elif path == "/api/stock-news":
+            ticker = qp("ticker", "RELIANCE")
+            limit = int(qp("limit", 10))
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from stock_news import get_stock_news_24h
+                self._json(get_stock_news_24h(ticker, limit))
+            except Exception as e:
+                self._json({"error": str(e), "items": []})
         elif path.startswith("/api/trigger/"):
             page = path.split("/")[-1]
             self._trigger(page, qp("dry","0")=="1")
@@ -898,50 +960,58 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(fetch_article_content_data(art_id))
             except Exception as e:
                 self._json({"error": str(e)})
+        elif path.startswith("/output/images/"):
+            fname = os.path.basename(path)
+            self._image(fname)
+        elif path.startswith("/assets/"):
+            fname = os.path.basename(path)
+            p = os.path.join(os.path.dirname(__file__), "..", "assets", fname)
+            if os.path.exists(p):
+                ct = "image/png" if p.endswith(".png") else ("image/jpeg" if p.endswith((".jpg",".jpeg")) else "application/octet-stream")
+                with open(p, "rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", ct)
+                self.send_header("Cache-Control", "public,max-age=86400")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_error(404)
+        elif path == "/favicon.ico":
+            p = os.path.join(os.path.dirname(__file__), "..", "assets", "finpulse_emblem_trans.png")
+            if os.path.exists(p):
+                with open(p, "rb") as f: body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_error(404)
         elif path.startswith("/img/"):
             self._image(path[5:])
         else:
             self.send_error(404)
 
     def _fetch_one_source(self, display_name: str):
-        """Synchronously fetch a single source, then queue auto-processing."""
+        """Synchronously fetch a single source (manual mode — no auto-post generation)."""
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
             from fetcher import fetch_one_source
             result = fetch_one_source(display_name)
-            # Find the page for this source
-            try:
-                conn = get_connection()
-                row  = conn.execute(
-                    "SELECT page FROM sources WHERE display_name=? LIMIT 1",
-                    (display_name,)).fetchone()
-                conn.close()
-                page = row[0] if row else "finpulse"
-            except Exception:
-                page = "finpulse"
-            # Queue unprocessed articles in the background
-            threading.Thread(
-                target=_queue_unprocessed,
-                args=(display_name, page, 5),
-                daemon=True
-            ).start()
             self._json(result)
         except Exception as e:
             self._json({"error": str(e), "saved": 0, "total": 0})
 
     def _fetch_only(self, page):
-        """Run fetcher.py without posting, then queue auto-processing."""
+        """Run fetcher.py to retrieve and store news (manual mode — no auto-post generation)."""
         def _run():
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
                 from fetcher import fetch_page, fetch_all_pages
                 if page == "all":
                     fetch_all_pages(top_n=10, dry_run=False)
-                    for pg in ("finpulse","techpulse","corppulse","worldpulse"):
-                        _queue_page_unprocessed(pg, max_q=5)
                 else:
                     fetch_page(page, top_n=10, dry_run=False)
-                    _queue_page_unprocessed(page, max_q=5)
             except Exception as e:
                 print(f"[fetch:{page}] {e}")
         threading.Thread(target=_run, daemon=True).start()

@@ -252,7 +252,8 @@ What to watch:
 ❌ More details expected in coming hours
 ❌ Multiple outcomes still possible
 
-Source: {source}
+📰 Source: {source}
+{f"🔗 Full Story: {article.get('url')}" if article.get('url') else ""}
 
 💬 What's your take on this? Drop your thoughts below 👇
 

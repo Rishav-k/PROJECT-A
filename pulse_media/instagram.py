@@ -64,14 +64,14 @@ def credentials_configured(page: str) -> bool:
 # INSTAGRAM CLIENT (instagrapi)
 # ─────────────────────────────────────────────
 
-def get_client(page: str):
+def get_client(page: str, verification_code: Optional[str] = None):
     """
     Get a logged-in instagrapi Client for the given page.
     Saves session to disk so we only login once.
     """
     try:
         from instagrapi import Client
-        from instagrapi.exceptions import LoginRequired
+        from instagrapi.exceptions import LoginRequired, TwoFactorRequired
     except ImportError:
         print("❌ instagrapi not installed.")
         print("   Run: pip3 install instagrapi")
@@ -95,14 +95,39 @@ def get_client(page: str):
             return cl
         except Exception:
             print(f"  🔄 Session expired — logging in fresh...")
-            os.remove(session_file)
+            try:
+                os.remove(session_file)
+            except Exception:
+                pass
+
+    # Auto-generate TOTP code if 2FA secret seed is in .env
+    two_fa_seed = os.environ.get(f"INSTAGRAM_{page.upper()}_2FA_SEED", "").strip() or os.environ.get("INSTAGRAM_2FA_SEED", "").strip()
+    if not verification_code and two_fa_seed:
+        try:
+            import pyotp
+            verification_code = pyotp.TOTP(two_fa_seed).now()
+            print(f"  🔐 Generated TOTP 2FA code automatically from seed: {verification_code}")
+        except Exception as e:
+            print(f"  ⚠️ Error generating TOTP: {e}")
 
     # Fresh login
     print(f"  🔑 Logging in as {username}...")
-    cl.login(username, password)
-    cl.dump_settings(session_file)
-    print(f"  ✅ Logged in and session saved")
-    return cl
+    try:
+        if verification_code:
+            cl.login(username, password, verification_code=verification_code)
+        else:
+            cl.login(username, password)
+        cl.dump_settings(session_file)
+        print(f"  ✅ Logged in and session saved to {session_file}")
+        return cl
+    except Exception as e:
+        err_msg = str(e)
+        if "TwoFactorRequired" in str(type(e)) or "two-factor" in err_msg.lower() or "verification_code" in err_msg.lower():
+            raise RuntimeError(
+                f"TWO_FACTOR_REQUIRED: Instagram account @{username} has 2FA enabled. "
+                f"Run `python3 instagram.py --login {page} <CODE>` or enter the 6-digit code from SMS / Authenticator app."
+            ) from e
+        raise
 
 
 # ─────────────────────────────────────────────
@@ -433,11 +458,24 @@ def run_carousel_cycle(page: str, dry_run: bool = False) -> dict:
     return result
 
 
-# ─────────────────────────────────────────────
-# CLI
-# ─────────────────────────────────────────────
-
 def main():
+    if "--login" in sys.argv:
+        idx = sys.argv.index("--login")
+        page = sys.argv[idx + 1] if len(sys.argv) > idx + 1 and not sys.argv[idx + 1].startswith("-") else "finpulse"
+        code = sys.argv[idx + 2] if len(sys.argv) > idx + 2 and not sys.argv[idx + 2].startswith("-") else None
+        if not code:
+            code = input(f"Enter 2FA verification code (from SMS or Authenticator app) for {page} [press Enter if none]: ").strip() or None
+        print(f"🔑 Logging in to Instagram for {page}...")
+        try:
+            cl = get_client(page, verification_code=code)
+            creds = get_credentials(page)
+            info = cl.user_info_by_username(creds["username"])
+            print(f"🎉 Login successful! Connected as @{creds['username']} (Followers: {info.follower_count})")
+            print(f"   Session saved to data/sessions/{page}_session.json")
+        except Exception as e:
+            print(f"❌ Login failed: {e}")
+        return
+
     page     = "finpulse"
     dry_run  = False
     carousel = False
